@@ -2,6 +2,12 @@
 
 Vaš lični, potpuno prilagodljiv operativni sistem — pokreće se lokalno na vašem računaru, bez naloga, bez clouda, bez pretplate.
 
+## ⬇️ Preuzimanje
+
+**[Preuzmi najnoviju verziju](https://github.com/ognjenraljic/aizdravo-dashboard-releases/releases/latest/download/ai-zdravo-dashboard.zip)** — uvijek vodi na najnoviji release, bez obzira kad gledate ovu stranicu.
+
+Raspakujte zip, otvorite folder u Claude Desktop ili ChatGPT desktop aplikaciji i recite mu da pokrene dashboard.
+
 ## Šta je ovo
 
 Dashboard je jedan običan folder (bez build koraka, bez npm-a) koji pokrećete lokalno preko Python-a. Radi u browseru, na `http://localhost:8100`. Svi vaši podaci (raspored, teme, instalirani alati) ostaju na vašem disku, u `dashboard-state.json`.
