@@ -1,0 +1,3409 @@
+/* Registers --sidebar-w as an actual <length>, not just an opaque string -
+   without this, CSS has no idea HOW to interpolate between 264px and 72px
+   on toggle, so a `transition` on it would just snap instantly instead of
+   animating. This is what lets the collapse below animate .sidebar's
+   width AND .fx-frame's left edge from ONE single changing value, instead
+   of needing two separate transitions kept manually in sync. */
+@property --sidebar-w {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 264px;
+}
+
+:root {
+  --bg: #121212;
+  --card: #1a1a1a;
+  --border: #2a2a2a;
+  --accent: #ff8c00;
+  --accent-hover: #ff9d1f;
+  --accent-highlight: #fee685;
+  --accent-rgb: 255, 140, 0;
+  --accent-glow-rgb: 255, 175, 90;
+  --accent-hue-rotate: 0deg;
+  --accent-ink: #121212;
+  --text: #ffffff;
+  --text-soft: #a39b8f;
+  --text-faint: #6b6459;
+  --sidebar-bg: #151310;
+  --modal-bg: #171512;
+  --switch-bg: #27241f;
+  --glass-start-rgb: 38, 34, 28;
+  --glass-end-rgb: 18, 18, 18;
+  --floating-rgb: 28, 25, 21;
+  --floating-hover-rgb: 38, 32, 24;
+  --grid-size: 28px;
+  --sidebar-w: 264px;
+  --topbar-h: 44px;
+  --sidebar-motion-duration: 420ms;
+  --sidebar-motion-ease: cubic-bezier(.2,.75,.2,1);
+  transition: --sidebar-w var(--sidebar-motion-duration) var(--sidebar-motion-ease);
+}
+
+:root[data-theme="neuralna-noc"] {
+  --bg: #0e0d14;
+  --card: #181622;
+  --border: #2c2940;
+  --accent: #9b87f5;
+  --accent-hover: #ad9cf8;
+  --accent-highlight: #ddd6fe;
+  --accent-rgb: 155, 135, 245;
+  --accent-glow-rgb: 190, 175, 255;
+  --accent-hue-rotate: 222deg;
+  --accent-ink: #111019;
+  --text-soft: #aea6c4;
+  --text-faint: #716a86;
+  --sidebar-bg: #11101a;
+  --modal-bg: #16141f;
+  --switch-bg: #262238;
+  --glass-start-rgb: 35, 31, 50;
+  --glass-end-rgb: 14, 13, 20;
+  --floating-rgb: 27, 24, 40;
+  --floating-hover-rgb: 41, 36, 60;
+}
+
+:root[data-theme="jadranski-signal"] {
+  --bg: #0b1214;
+  --card: #132024;
+  --border: #22363b;
+  --accent: #22d3ee;
+  --accent-hover: #4adef2;
+  --accent-highlight: #a5f3fc;
+  --accent-rgb: 34, 211, 238;
+  --accent-glow-rgb: 120, 230, 245;
+  --accent-hue-rotate: 157deg;
+  --accent-ink: #071316;
+  --text-soft: #9eb7bc;
+  --text-faint: #60787e;
+  --sidebar-bg: #0d171a;
+  --modal-bg: #101c20;
+  --switch-bg: #1c3035;
+  --glass-start-rgb: 25, 45, 50;
+  --glass-end-rgb: 11, 18, 20;
+  --floating-rgb: 20, 35, 39;
+  --floating-hover-rgb: 28, 51, 57;
+}
+
+:root[data-theme="smaragdni-tok"] {
+  --bg: #0d1311;
+  --card: #16201c;
+  --border: #28382f;
+  --accent: #34d399;
+  --accent-hover: #58dcae;
+  --accent-highlight: #a7f3d0;
+  --accent-rgb: 52, 211, 153;
+  --accent-glow-rgb: 116, 231, 187;
+  --accent-hue-rotate: 127deg;
+  --accent-ink: #08130f;
+  --text-soft: #a2b8ad;
+  --text-faint: #62776c;
+  --sidebar-bg: #0f1814;
+  --modal-bg: #131d19;
+  --switch-bg: #213229;
+  --glass-start-rgb: 29, 47, 38;
+  --glass-end-rgb: 13, 19, 17;
+  --floating-rgb: 23, 37, 31;
+  --floating-hover-rgb: 32, 53, 43;
+}
+
+:root[data-theme="crveni-puls"] {
+  --bg: #140e10;
+  --card: #211619;
+  --border: #3a282d;
+  --accent: #ff5c6c;
+  --accent-hover: #ff7885;
+  --accent-highlight: #fecdd3;
+  --accent-rgb: 255, 92, 108;
+  --accent-glow-rgb: 255, 145, 155;
+  --accent-hue-rotate: 321deg;
+  --accent-ink: #19090c;
+  --text-soft: #bba3a8;
+  --text-faint: #7d6168;
+  --sidebar-bg: #190f12;
+  --modal-bg: #201317;
+  --switch-bg: #352126;
+  --glass-start-rgb: 51, 30, 36;
+  --glass-end-rgb: 20, 14, 16;
+  --floating-rgb: 40, 23, 28;
+  --floating-hover-rgb: 58, 31, 38;
+}
+
+:root[data-theme="elektricni-san"] {
+  --bg: #0b0f16;
+  --card: #141b27;
+  --border: #273349;
+  --accent: #5b8cff;
+  --accent-hover: #78a1ff;
+  --accent-highlight: #bfdbfe;
+  --accent-rgb: 91, 140, 255;
+  --accent-glow-rgb: 145, 178, 255;
+  --accent-hue-rotate: 187deg;
+  --accent-ink: #09101e;
+  --text-soft: #9faec7;
+  --text-faint: #60708a;
+  --sidebar-bg: #0e1420;
+  --modal-bg: #121925;
+  --switch-bg: #202c42;
+  --glass-start-rgb: 28, 39, 58;
+  --glass-end-rgb: 11, 15, 22;
+  --floating-rgb: 20, 28, 42;
+  --floating-hover-rgb: 29, 42, 63;
+}
+
+/* Applied only for the very first paint, to instantly restore a
+   previously-collapsed state from localStorage without animating IN from
+   264px on every page load - see applySidebarCollapsed() in app.js. */
+:root.no-sidebar-transition {
+  transition: none !important;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Public Sans", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  overflow: hidden;
+  transition: background .28s ease, color .28s ease;
+}
+
+/* applied while a card drag/resize is in progress - without it, crossing
+   the pointer over the sidebar (or any other text) mid-drag triggers the
+   browser's native text-selection drag-highlight */
+body.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+.app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  /* Prostor za gornju traku kartica (23.7.2026) - sidebar/canvas-wrap
+     ispod nje su flex djeca, pa se automatski skrate za ovoliko preko
+     border-box (globalni box-sizing:border-box), bez ijedne druge
+     izmjene njihove visine. */
+  padding-top: var(--topbar-h);
+}
+
+/* ---------------- Gornja traka kartica (23.7.2026) ---------------- */
+/* "Dashboard" (pinovana) + jedna po otvorenoj aplikaciji - vidi
+   createAppPageDOM()/switchTopTab() u app.js. Kad je bilo koja app
+   kartica aktivna, body.is-app-fullscreen sakriva #app/fx-frame/FAB u
+   potpunosti (ne samo vizuelno prekriva - display:none, van tab reda),
+   tako da "bez dashboard funkcija" znači stvarno bez njih, ne samo
+   sakriveno iza z-indexa. */
+.top-tab-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--topbar-h);
+  z-index: 20;
+  display: flex;
+  align-items: stretch;
+  background: var(--sidebar-bg);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.top-tab-bar::-webkit-scrollbar { display: none; }
+.top-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-soft);
+  padding: 0 16px;
+  cursor: pointer;
+  font: 600 12.5px/1 "Inter", sans-serif;
+  white-space: nowrap;
+}
+.top-tab:hover { color: var(--text); }
+.top-tab.is-active { color: var(--text); border-bottom-color: var(--accent); }
+.top-tab-icon-slot { display: inline-flex; align-items: center; flex: none; }
+.top-tab-logo { width: 16px; height: 16px; }
+.top-tab svg { width: 14px; height: 14px; }
+.top-tab-close {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 2px;
+  color: var(--text-faint);
+  margin-left: 2px;
+}
+.top-tab-close:hover { color: #ff8585; background: rgba(255, 92, 92, .15); }
+.top-tab-close svg { width: 10px; height: 10px; }
+
+body.is-app-fullscreen #app,
+body.is-app-fullscreen .fx-frame,
+body.is-app-fullscreen .fab-menu,
+body.is-app-fullscreen .save-status { display: none; }
+
+/* Puni ekran otvorene aplikacije - ispod trake, ista pozadina kao
+   dashboard da prelaz ne "trepne" drugom bojom. */
+.app-fullscreen-pages {
+  position: fixed;
+  top: var(--topbar-h);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  background: var(--bg);
+  overflow: hidden;
+}
+.app-fullscreen-pages[hidden] { display: none; }
+.app-page { display: none; flex-direction: column; height: 100%; }
+.app-page.is-active { display: flex; }
+.app-page-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+}
+.app-page-titles h1 { margin: 0; font-size: 17px; color: var(--text); }
+.app-page-titles .app-version { color: var(--text-faint); font-size: 11.5px; }
+.app-page-surface {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px;
+}
+
+@media (max-width: 760px) {
+  .top-tab { padding: 0 12px; font-size: 12px; }
+  .app-page-heading { padding: 12px 16px; }
+  .app-page-surface { padding: 14px; }
+}
+
+/* ---------------- Sidebar ---------------- */
+
+.sidebar {
+  width: var(--sidebar-w);
+  flex: none;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 22px 16px;
+  position: relative;
+  z-index: 3;
+  transition: background .28s ease, border-color .28s ease;
+  /* NOT overflow:hidden here on purpose - .sidebar-toggle below hangs
+     half outside the sidebar's right edge by design, and clipping that
+     would cut the button in half. Overflow clipping for shrinking text
+     during collapse happens on the individual rows instead. */
+}
+
+/* Collapse toggle - a small circle straddling the sidebar/canvas
+   boundary (half in, half out), same idea as the collapse handles in
+   VSCode/similar panel UIs. Lives on .sidebar (not a fixed/absolute
+   sibling elsewhere) so it scrolls/repositions with the sidebar for
+   free if that's ever needed, and so `position:relative` on .sidebar
+   is all the anchoring it needs. */
+.sidebar-toggle {
+  all: unset;
+  position: absolute;
+  top: 26px;
+  right: -11px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--sidebar-bg);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-faint);
+  z-index: 4;
+  transition: color .15s ease, border-color .15s ease;
+}
+.sidebar-toggle:hover {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), .5);
+}
+.sidebar-toggle svg {
+  width: 12px;
+  height: 12px;
+  /* Same easing/duration as --sidebar-w below - the arrow flips over
+     the same span of time the sidebar takes to collapse, not faster/
+     slower, so the two reads as one coordinated motion. */
+  transition: transform var(--sidebar-motion-duration) var(--sidebar-motion-ease);
+}
+.sidebar.is-collapsed .sidebar-toggle svg {
+  transform: rotate(180deg);
+}
+
+/* .brand/.brand-mark/.brand-word (logo + "AI Zdravo" iznad nav liste)
+   uklonjeni 23.7.2026 na Ognjenov zahtjev - nav itemi sad kreću od
+   samog vrha sidebar-a. Gornja traka (top-tab-bar) sad nosi brend
+   identitet (customizable u Podešavanja, vidi "Gornja traka" sekciju). */
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+}
+
+.nav-item {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+  color: var(--text-soft);
+  position: relative;
+  z-index: 1;
+  transition:
+    color .15s ease,
+    gap var(--sidebar-motion-duration) var(--sidebar-motion-ease);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.nav-item:hover { color: var(--text); }
+.nav-item.is-active { color: var(--text); }
+.sidebar.is-collapsed .nav-item {
+  gap: 0;
+}
+
+.nav-label {
+  font-size: 14px;
+  font-weight: 600;
+  font-family: "Inter", sans-serif;
+  /* 21.7.2026 - was `width:0` on collapse with only opacity in the
+     transition list, so width snapped INSTANTLY the moment .is-collapsed
+     was toggled while the sidebar box itself was still ~300ms into
+     shrinking - text vanished into a still-wide sidebar, then the box
+     caught up around empty space. Confirmed live: Ognjen reported
+     collapse feeling abrupt while expand felt smooth - same root cause
+     works FOR you on the way back (label pops in cleanly right as the
+     box finishes growing, not visibly snapping partway through empty
+     space) but AGAINST you collapsing. CSS can't transition to/from
+     `width:auto` at all, so the fix isn't "add width to the transition
+     list" - it's max-width against a fixed cap comfortably wider than
+     any real label, which DOES interpolate smoothly between two actual
+     numbers. */
+  max-width: 160px;
+  overflow: hidden;
+  white-space: nowrap;
+  transform: translateX(0);
+  transition:
+    opacity 240ms ease,
+    max-width var(--sidebar-motion-duration) var(--sidebar-motion-ease),
+    transform 240ms ease;
+}
+
+.nav-skel {
+  width: var(--w, 60%);
+  max-width: 200px;
+  height: 11px;
+  border-radius: 2px;
+  background-color: var(--card);
+  background-image: linear-gradient(100deg, transparent 30%, rgba(var(--accent-glow-rgb),.16) 50%, transparent 70%);
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: shimmer 2.6s linear infinite;
+  flex: none;
+  overflow: hidden;
+  transform: translateX(0);
+  transition:
+    opacity 240ms ease,
+    max-width var(--sidebar-motion-duration) var(--sidebar-motion-ease),
+    transform 240ms ease;
+}
+.sidebar.is-collapsed .nav-label,
+.sidebar.is-collapsed .nav-skel {
+  opacity: 0;
+  max-width: 0;
+  transform: translateX(-6px);
+}
+
+/* Icon inside a nav item - EVERY nav item has one now (21.7.2026: Početna
+   got icon-tabler-home, replacing the plain active-state dot every item
+   used to have - the sliding .nav-indicator box plus this icon turning
+   accent-colored on hover/active already signal "current tab" without
+   needing a separate dot too). 16px reads as "secondary to the label"
+   at this sidebar scale. */
+.nav-icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--text-faint);
+  transition: color .15s ease, opacity .15s ease;
+}
+.nav-item:hover .nav-icon,
+.nav-item.is-active .nav-icon,
+.nav-add:hover .nav-icon {
+  color: var(--accent);
+}
+
+/* Nav row (21.7.2026) - wraps the actual .nav-item button plus a sibling
+   .nav-row-actions group (edit-icon always, delete only for custom tabs -
+   Početna's row never gets a delete button at all). Deliberately
+   siblings, not nested buttons - a <button> inside a <button> is invalid
+   HTML and the click would bubble into the tab-switch handler anyway.
+   .nav-row itself is a plain position:relative box, no visual styling of
+   its own. Applies to Početna's row too now, not just custom tabs - it
+   needed a place to hang its own edit-icon button. */
+.nav-row {
+  position: relative;
+}
+.nav-row .nav-item {
+  width: 100%;
+}
+.nav-row[data-tab-id] .nav-item {
+  padding-left: 38px;
+}
+.nav-drag-handle {
+  all: unset;
+  position: absolute;
+  left: 7px;
+  top: 50%;
+  width: 22px;
+  height: 26px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  opacity: .42;
+  cursor: grab;
+  z-index: 2;
+  border-radius: 2px;
+  transition: color .15s ease, opacity .15s ease, background .15s ease;
+}
+.nav-drag-handle span {
+  width: 10px;
+  height: 16px;
+  background-image: radial-gradient(circle, currentColor 1.15px, transparent 1.3px);
+  background-size: 5px 5px;
+  background-position: 0 0;
+}
+.nav-row:hover .nav-drag-handle,
+.nav-drag-handle:hover,
+.nav-drag-handle:focus-visible {
+  color: var(--accent);
+  opacity: 1;
+  background: rgba(var(--accent-rgb), .09);
+}
+.nav-drag-handle:active {
+  cursor: grabbing;
+}
+.nav-row-actions {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  z-index: 2;
+  transition: opacity .15s ease;
+}
+.nav-row:hover .nav-row-actions {
+  opacity: 1;
+}
+.nav-edit-icon,
+.nav-delete {
+  all: unset;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color .15s ease, background .15s ease;
+}
+.nav-edit-icon:hover {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), .12);
+}
+.nav-delete:hover {
+  color: #ff5c5c;
+  background: rgba(255, 92, 92, .12);
+}
+.nav-edit-icon svg,
+.nav-delete svg {
+  width: 13px;
+  height: 13px;
+}
+/* Collapsed sidebar has no room for hover-reveal action buttons next to
+   an icon-only row, and hover-to-reveal doesn't translate to the narrow
+   rail anyway - hidden outright, not just left at opacity:0. */
+.sidebar.is-collapsed .nav-row-actions {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.sidebar.is-collapsed .nav-drag-handle {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.sidebar.is-collapsed .nav-row[data-tab-id] .nav-item {
+  padding-left: 12px;
+}
+
+/* SortableJS states for sidebar tab reorder. The original row becomes a
+   quiet target slot while the fallback clone follows the pointer. */
+.nav-tab-ghost {
+  opacity: .28;
+}
+.nav-tab-dragging {
+  width: 232px !important;
+  background: rgba(var(--floating-rgb), .98);
+  border: 1px solid rgba(var(--accent-rgb), .42);
+  border-radius: 2px;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, .46);
+  z-index: 9999 !important;
+}
+.nav-tab-dragging .nav-row-actions {
+  opacity: 0;
+}
+
+/* "+ Dodaj tab" - visually a nav item but never gets is-active/chosen
+   styling (it doesn't represent a tab, it opens the add-tab modal), so
+   it's a distinct class rather than reusing .nav-item with a modifier. */
+.nav-add {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+  color: var(--text-faint);
+  transition:
+    color .15s ease,
+    background .15s ease,
+    gap var(--sidebar-motion-duration) var(--sidebar-motion-ease);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.nav-add:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, .03);
+}
+.sidebar.is-collapsed .nav-add {
+  gap: 0;
+}
+
+.nav-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 40px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(var(--accent-rgb),.14), rgba(var(--accent-rgb),.05));
+  border: 1px solid rgba(var(--accent-rgb),.28);
+  z-index: 0;
+  pointer-events: none;
+  transition: transform .35s cubic-bezier(.22, 1, .36, 1);
+}
+
+@keyframes shimmer {
+  /* highlight band starts fully off-screen right, ends fully off-screen
+     left (background-size:200% + no-repeat) so the loop restart is
+     invisible - no snap, no flicker. */
+  from { background-position: 150% 0; }
+  to   { background-position: -50% 0; }
+}
+
+/* ---------------- Canvas area ---------------- */
+
+.canvas-wrap {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+  isolation: isolate;
+  /* NO CSS background-image dot grid (removed 20.7.2026, fourth round).
+     Three earlier attempts (white low-opacity, amber low-opacity, no
+     static grid at all) all still left a gap between "every numeric check
+     passes" and "looks identical on Ognjen's real Retina display" -
+     because the static dots (CSS background-image radial-gradient tiling)
+     and the hover-lit dots (canvas arc-fill in app.js) were always two
+     genuinely different rendering engines, even when fed the exact same
+     phase math. Close enough that math confirms alignment, not close
+     enough to be pixel-identical at native resolution. Fix: BOTH layers
+     (dim/white base + amber/bright hover boost) are now drawn by the SAME
+     canvas loop over the SAME (gx,gy) points (app.js redrawGrid, in the
+     "Fixed FX overlay" section) - one coordinate computation feeding both,
+     so there is no code path left where they could diverge. */
+}
+
+.ambient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 640px;
+  pointer-events: none;
+  z-index: 0;
+  /* four stops per gradient (not two) so the falloff is gradual instead of
+     one hard "color -> transparent" edge - a 2-stop radial on a near-black
+     background is exactly what produces visible concentric rings, since
+     there aren't enough steps for the eye to read it as continuous. */
+  background:
+    radial-gradient(560px 380px at 22% 0%, rgba(var(--accent-rgb),.08) 0%, rgba(var(--accent-rgb),.04) 35%, rgba(var(--accent-rgb),.015) 60%, transparent 85%),
+    radial-gradient(420px 320px at 85% 8%, rgba(var(--accent-rgb),.05) 0%, rgba(var(--accent-rgb),.022) 40%, rgba(var(--accent-rgb),.008) 65%, transparent 85%);
+  transition: background .3s ease;
+}
+
+/* A fractal-noise dither overlay lived here briefly (20.7.2026) as a
+   second banding fix on top of the 4-stop gradient above - removed the
+   same day. Ognjen flagged it live: at native Retina resolution it
+   rendered as its own visible fine dot texture across the whole
+   background, reading as a confusing SECOND grid layered under the real
+   28px one, not as imperceptible dither. The 4-stop gradient alone is the
+   fix that stays; if banding shows up again, revisit with a coarser/lower
+   baseFrequency noise instead of reintroducing this one as-is. */
+
+/* Fixed overlay for cursor effects (local dot glow + click "connections").
+   Positioned independently of canvas-wrap's scroll so it always tracks the
+   pointer 1:1 against whatever is currently on screen. */
+.fx-frame {
+  position: fixed;
+  top: var(--topbar-h);
+  right: 0;
+  bottom: 0;
+  left: var(--sidebar-w);
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
+#glowCanvas,
+#burstCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#glowCanvas {
+  opacity: 1;
+  transition: opacity 220ms ease;
+}
+
+.grid-hidden #glowCanvas {
+  opacity: 0;
+}
+
+.view {
+  display: none;
+  position: relative;
+  z-index: 2;
+  min-height: 100%;
+  /* Fallback numbers here only matter for the first paint before
+     updateBoardWidth() runs (21.7.2026: 56->28->42, tracks SAFE_UNITS in
+     app.js) - JS overwrites --safe-x/--safe-x-right on every load right
+     after, this is just to avoid a visible jump on that very first frame. */
+  padding: 64px var(--safe-x-right, 42px) 120px var(--safe-x, 42px);
+}
+.view.is-active { display: block; }
+
+/* ---------------- Wizard heading (23.7.2026, četvrti prolaz) ----------------
+   Ognjenova druga ispravka: prošli pokušaj je stavio naslov trenutnog
+   koraka DESNO od hero-a, na istom redu preko divider linije - to
+   takođe nije bilo traženo. Naslov (#wizardStepTitle) ide ISPOD hero-a
+   (logo + "Dobrodošli..." + "Kratak vodič..."), left-aligned, počinje
+   na istoj lijevoj ivici kao logo (nije uvučen da prati hero-text) -
+   .wizard-heading je sad flex-column stog, .wizard-heading-hero je
+   unutrašnji red (logo pored teksta), isto kao stari .hero prije bilo
+   kakvog dirana. Hero stil je i dalje netaknut. */
+.wizard-heading {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: rise .7s cubic-bezier(.22,1,.36,1) forwards;
+}
+.wizard-heading-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 640px;
+}
+
+.hero-mark {
+  position: relative;
+  width: 54px;
+  height: 58px;
+  flex: none;
+  margin-top: -10px;
+}
+.hero-text { min-width: 0; }
+.hero-mark canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.hero-mark .flame {
+  position: absolute;
+  left: 2px;
+  bottom: 5px;
+  width: 42px;
+  height: 38px;
+  object-fit: contain;
+  object-position: left;
+  animation: breathe 3.4s ease-in-out infinite;
+  filter: hue-rotate(var(--accent-hue-rotate)) drop-shadow(0 0 18px rgba(var(--accent-rgb), .55));
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); filter: hue-rotate(var(--accent-hue-rotate)) drop-shadow(0 0 14px rgba(var(--accent-rgb),.45)); }
+  50%      { transform: scale(1.07); filter: hue-rotate(var(--accent-hue-rotate)) drop-shadow(0 0 26px rgba(var(--accent-rgb),.75)); }
+}
+
+.hero-text h1 {
+  font-family: "Inter", "Segoe UI", ui-sans-serif, sans-serif;
+  font-weight: 700;
+  font-size: clamp(22px, 2.6vw, 28px);
+  line-height: 1.16;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+  text-wrap: balance;
+}
+.hero-text h1 .accent {
+  background: linear-gradient(to right, var(--accent), var(--accent-highlight));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero-text p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-soft);
+  margin: 0;
+  max-width: 62ch;
+}
+
+#wizardStepTitle { margin: 0; font-size: 23px; color: var(--text); text-align: left; }
+
+@keyframes rise {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------------- Board / placeholder cards ---------------- */
+/* 20.7.2026 - stripped to a clean slate on purpose (see the matching note
+   in app.js above the board section). No spans, no resize, no drag/
+   reorder, no localStorage layout - just the grid platform and a single
+   static card sized directly in CSS, waiting for the next design pass on
+   section behavior. */
+
+/* Real CSS Grid, not absolutely-positioned children. Track size is fixed
+   at exactly GRID px (`--grid-size`, 28px) with ZERO real CSS `gap` - a
+   real gap would add space the dot pattern doesn't know about and break
+   the placement-grid-IS-the-dot-grid property. */
+.board {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 24), var(--grid-size));
+  grid-auto-rows: var(--grid-size);
+  grid-auto-flow: dense;
+  gap: 0;
+}
+
+/* Widget drag-and-drop plasman (24.7.2026, preprojektovano isti dan) - duh
+   (ghost) je PRAVI grid učesnik (direktno dijete .board-a, plain span bez
+   starta) umetnut na tačnu DOM poziciju u odnosu na postojeće kartice dok
+   se pločica prevlači - grid-auto-flow:dense ga sam pakuje u prvo stvarno
+   slobodno mjesto, isti mehanizam kao ostale kartice. Nema "zauzeto" stanja
+   (nije moguće preklapanje - dense packing to garantuje samo po sebi). */
+.widget-drop-ghost {
+  border: 2px dashed var(--accent);
+  border-radius: 10px;
+  background: rgba(var(--accent-rgb), .14);
+  pointer-events: none;
+  z-index: 6;
+}
+
+.pcard {
+  grid-column: span 16;
+  grid-row: span 10;
+  /* Asymmetric inset, right/bottom only (21.7.2026, fourth pass on this
+     rule) - a plain 8px on all four sides (third pass, see git history)
+     gave every card breathing room but landed the edge nowhere the dot
+     grid actually draws a dot. Bumping that to a symmetric 14px (exactly
+     half a GRID step, so it WOULD land on the finer sub-grid added the
+     same day) put a real dot under both edges but made the total gap
+     between two cards 28px (14+14, since each contributes its own
+     margin) - Ognjen flagged that as reading like a whole skipped column,
+     too far apart. Right/bottom-only margin sidesteps the "each neighbor
+     adds its own margin" doubling: the leading (left/top) edge sits
+     flush on the true GRID line (0 margin there) same as the original
+     Korak 1 ideal, and only the trailing edge gets inset - by exactly one
+     fine-grid step (14px), which IS a real dot. Net result: 14px gap
+     between neighbors (half a square, not a full one), and BOTH edges of
+     that gap land on a real dot (the trailing card's edge on a minor
+     14px-step dot, the leading card's edge on the true grid line/major
+     dot). This is the same asymmetric-margin PATTERN the pre-rebuild
+     board used (`margin: 0 16px 16px 0`) - only the value changed, to
+     one that's actually meaningful against the current dot spacing.
+     Verified live before committing: getBoundingClientRect() confirmed
+     exactly 14px between card-1's right edge and card-2's left edge, and
+     between card-1's bottom and card-3's top. This is a MARGIN, not a
+     `gap` on #board - the grid itself (column/row tracks, --cols, dot
+     phase math) is untouched, so sizes are still exact GRID-unit spans
+     and resize still snaps to the same steps. */
+  margin: 0 14px 14px 0;
+  border-radius: 2px;
+  /* Solid u normalnom radu (27.7.2026, Ognjenov zahtjev - isprekidana
+     linija + debele resize ivice su ranije bile stalno vidljive na
+     hover, izgledalo je "uvijek u modu za uređivanje"). Isprekidana
+     linija se sad pojavljuje SAMO u .is-editing modu (dugme "Uredi" u
+     meniju sekcije) - vidi .pcard.is-editing niže. */
+  border: 1.5px solid var(--border);
+  /* Glass effect (21.7.2026, second pass). First pass bumped the
+     background from .015 to .05 to make the blur visible - looked washed
+     out/milky-white, not the original dark card look. Reverted the
+     background back down close to original; backdrop-filter still blurs
+     whatever is BEHIND the card (dot grid, ambient glow) even at this low
+     an alpha - the frost comes from the blur itself, not from a lighter
+     tint. -webkit- prefix is required, not optional - Safari has no
+     unprefixed backdrop-filter support as of this writing. */
+  background: rgba(255,255,255,.02);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: var(--text-faint);
+  opacity: 0;
+  transform: scale(.92);
+  animation: pop .55s cubic-bezier(.22,1,.36,1) forwards;
+  transition: border-color .2s ease, background .2s ease, box-shadow .2s ease, margin-right .16s ease;
+  /* transform is deliberately NOT in this transition list. The floating
+     drag-preview clone (see .pcard-dragging below) is also a .pcard - if
+     transform eased here, that eases the clone too, and Sortable moves
+     that clone by writing a raw `transform: matrix(...)` inline on every
+     single mousemove with no easing of its own. A transition on transform
+     would make the clone visibly lag behind the real cursor instead of
+     tracking it 1:1 - confirmed live: this is exactly what made the first
+     lift attempt (chosenClass, below) read as "stuck in place". */
+  position: relative; /* containing block for .pcard-inner (inset:0), edge handles, and the ::before dot */
+}
+
+/* Only a section that reaches the final grid track gets a viewport-edge
+   correction. Ordinary card-to-card spacing stays at the normal 14px. */
+.pcard.is-at-right-limit {
+  margin-right: var(--right-limit-inset, 14px);
+}
+
+.pcard-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Edge-drag resize (20.7.2026, first mechanic of the rebuild): a thin
+   strip straddling each resizable edge, not a single corner handle - so
+   dragging the RIGHT edge changes ONLY width, dragging the BOTTOM edge
+   changes ONLY height, each snapping live to whole GRID steps in exactly
+   the direction dragged, per Ognjen's ask. Centered on the edge (-6px to
+   +6px) for a comfortable hit target without needing to land pixel-exact
+   on the 1.5px border. */
+.pcard-edge {
+  position: absolute;
+  opacity: 0;
+  /* Van .is-editing moda ivice ne smiju biti ni hoverabilne (ranije bile
+     nevidljive ali i dalje aktivne, pa je slučajan hover blizu ivice
+     mogao okinuti resize bez ikakvog vizuelnog upozorenja). */
+  pointer-events: none;
+  background: rgba(var(--accent-rgb),.16);
+  transition: opacity .15s ease;
+}
+/* Isprekidana linija + resize ivice se pojavljuju SAMO u modu uređivanja
+   (dugme "Uredi" u meniju sekcije, 27.7.2026) - ne više na hover. */
+.pcard.is-editing { border-style: dashed; }
+.pcard.is-editing .pcard-edge { opacity: 1; pointer-events: auto; }
+.pcard-edge:hover,
+.pcard-edge.is-active {
+  background: rgba(var(--accent-rgb),.4);
+}
+.pcard-edge-right {
+  top: 0;
+  right: -6px;
+  bottom: 0;
+  width: 12px;
+  cursor: ew-resize;
+}
+.pcard-edge-right.is-limit {
+  opacity: 1;
+  cursor: not-allowed;
+  background: rgba(var(--accent-rgb), .95);
+  box-shadow: 0 0 16px rgba(var(--accent-rgb), .62);
+}
+.pcard.is-width-limit {
+  border-right-color: rgba(var(--accent-rgb), .92);
+  box-shadow: inset -3px 0 0 rgba(var(--accent-rgb), .26), 0 0 20px rgba(var(--accent-rgb), .1);
+}
+.pcard.is-width-limit::after {
+  content: 'Maksimalna širina';
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  padding: 6px 9px;
+  border: 1px solid rgba(var(--accent-rgb), .35);
+  border-radius: 2px;
+  background: rgba(22, 19, 15, .92);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .32);
+  color: var(--accent-highlight);
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: width-limit-in .18s cubic-bezier(.22, 1, .36, 1) both;
+}
+@keyframes width-limit-in {
+  from { opacity: 0; transform: translate(5px, -50%); }
+  to { opacity: 1; transform: translate(0, -50%); }
+}
+.pcard-edge-bottom {
+  left: 0;
+  bottom: -6px;
+  right: 0;
+  height: 12px;
+  cursor: ns-resize;
+}
+
+/* Drag-reorder (SortableJS, whole card except the two resize edges - see
+   the `filter` option in app.js). Cursor is set on .pcard, not the edges,
+   so the more specific ew/ns-resize cursors above still win there. */
+.pcard { cursor: grab; }
+
+/* Picked-up-off-the-table feel (shadow/border/brightness only, NO
+   transform - see the note on .pcard's transition above for why) applied
+   to the element that actually follows the cursor: `dragClass` in app.js
+   targets the CLONED floating preview Sortable creates in fallback mode,
+   not the original card. `chosenClass`/`ghostClass` (below) both land on
+   the ORIGINAL element instead - it stays in the DOM the whole drag and
+   is what Sortable repositions live as you hover different cards, so
+   THAT'S what should look like an empty gap, not get a "lift". First
+   attempt got this backwards (lift styling on chosenClass, i.e. on the
+   stationary original) - looked stuck in place because it was. */
+.pcard-dragging {
+  cursor: grabbing;
+  border-color: rgba(var(--accent-rgb),.75);
+  background: color-mix(in srgb, var(--card) 97%, transparent);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb),.4), 0 24px 44px rgba(0,0,0,.55);
+  /* Confirmed live: without this, the clone (a fresh DOM node with the
+     .pcard class) replays .pcard's own 550ms `pop` entrance animation
+     (opacity 0->1, scale .92->1) the instant Sortable creates it - every
+     pickup started nearly invisible and kept faintly scaling while
+     mid-drag, fighting Sortable's own translate math on the same
+     transform. animation:none stops that; opacity:1 replaces what the
+     animation would otherwise have been driving toward (the .pcard base
+     rule alone is opacity:0 with nothing left to animate it away). */
+  animation: none;
+  /* .pcard's own plain (pre-animation) declared value is scale(.92) -
+     with the animation that used to override it gone (above), that flat
+     .92 was leaking straight through as this element's rendered size,
+     AND Sortable reads-and-preserves whatever scale it finds as the
+     baseline for its own cursor-tracking matrix, so it would have stayed
+     shrunk for the whole drag. */
+  transform: none;
+  /* No opacity rule here on purpose - Sortable sets inline opacity:0.8 on
+     this exact element itself (its own fallback-clone default, confirmed
+     in vendor/sortable.min.js), which always wins over anything set here
+     anyway. That translucency is intentional/fine for a "lifted" look. */
+}
+
+/* The gap left behind at the drop target while a card is mid-drag - this
+   IS the original element (see the note above), live-repositioned by
+   Sortable as the pointer moves over different cards, which is what makes
+   everyone else visibly shift to make room. Dashed/near-transparent here
+   so it reads as "empty slot", not as another real card. */
+.pcard-ghost {
+  opacity: .35;
+  border-color: rgba(var(--accent-rgb),.4);
+  background: rgba(var(--accent-rgb),.05);
+}
+.pcard-ghost .pcard-inner,
+.pcard-ghost .pcard-edge { visibility: hidden; }
+
+/* Section name, top-left (21.7.2026) - only present when card.dataset.name
+   is set (sections added through the "add section" modal; the 3 original
+   hardcoded HTML cards never get one, see makeEdgeResizable() in app.js).
+   Always visible, not hover-reveal, like the view-heading text it echoes
+   at a smaller scale - unlike .pcard-delete below, this is informational,
+   not an action, so it shouldn't need a hover to discover it exists.
+   max-width leaves room for .pcard-delete sharing this same corner. */
+.pcard-name {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  right: 40px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: "Inter", sans-serif;
+  color: var(--text-faint);
+  letter-spacing: .01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color .2s ease;
+  z-index: 1;
+}
+.pcard:hover .pcard-name {
+  color: var(--text-soft);
+}
+
+/* Delete button, top-right (21.7.2026) - replaces the old purely
+   decorative ::before dot that lived in this exact corner (see git
+   history: a 5px circle that only ever changed color on hover, no
+   function) - same hover-reveal corner accent feel, now it actually
+   does something. Same pattern as .nav-delete: hover-reveal, red on its
+   own hover, no confirm() (see the comment on its click handler in
+   app.js for why). */
+.pcard-delete {
+  all: unset;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  color: var(--text-faint);
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+  transition: opacity .15s ease, color .15s ease, background .15s ease;
+}
+.pcard:hover .pcard-delete {
+  opacity: 1;
+}
+.pcard-delete:hover {
+  color: #ff5c5c;
+  background: rgba(255, 92, 92, .15);
+}
+.pcard-delete svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Scoped to .pcard-inner specifically (21.7.2026, was a bare `.pcard svg`
+   before) - that generic version also matched .pcard-delete's 13px icon
+   anywhere inside a .pcard (same specificity as .pcard-delete svg, later
+   in source order, so it was winning the cascade tie and rendering the
+   delete icon at 30px). .pcard-inner is where the actual CENTER content
+   icon lives - that's the only svg this should ever have applied to. */
+.pcard-inner svg {
+  width: 30px;
+  height: 30px;
+  color: var(--text-faint);
+  transition: color .2s ease;
+}
+
+/* 27.7.2026 - bilo golo .pcard:hover (svaka sekcija, uvijek) - Ognjenov
+   zahtjev da se akcentna ivica/pozadina-tint ("cijeli tab svijetli") NE
+   pojavljuje u normalnom radu, samo dok je sekcija u modu uređivanja
+   (isti .is-editing koji već kontroliše isprekidanu ivicu i resize
+   ručke - jedan gate za sve "u toku uređivanja" signale). */
+.pcard.is-editing:hover {
+  border-color: rgba(var(--accent-rgb),.55);
+  background: rgba(var(--accent-rgb),.035);
+}
+/* Same scoping fix as above - was `.pcard:hover svg`, which turned
+   .pcard-delete's icon accent-orange on card hover too, fighting its own
+   :hover -> red rule (equal specificity, this one came later so it won,
+   which is backwards - a delete button turning ORANGE instead of red on
+   hover reads as "safe/primary action", not "destructive"). */
+.pcard.is-editing:hover .pcard-inner svg { color: var(--accent); }
+
+@keyframes pop {
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ---------------- Placeholder tabs ---------------- */
+
+.skeleton-title {
+  width: var(--w, 40%);
+  max-width: 480px;
+  height: 40px;
+  border-radius: 2px;
+  background-color: var(--card);
+  background-image: linear-gradient(100deg, transparent 30%, rgba(var(--accent-glow-rgb),.13) 50%, transparent 70%);
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: rise .6s cubic-bezier(.22,1,.36,1) forwards, shimmer 2.6s linear infinite;
+}
+
+/* ---------------- Custom tab view heading ---------------- */
+/* Simple icon+title row at the top of a CUSTOM tab's section (21.7.2026)
+   - deliberately much plainer than Početna's .hero (no ember canvas, no
+   gradient-text, no welcome copy). Početna is the one designed "front
+   door" of the dashboard; a tab the user just named and picked an icon
+   for doesn't need its own hero moment, just a clear label over its
+   (empty, ready-for-widgets) board. */
+.view-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 40px;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: rise .6s cubic-bezier(.22,1,.36,1) forwards;
+}
+.view-heading-icon {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  color: var(--accent);
+}
+.view-heading h1 {
+  font-family: "Inter", "Segoe UI", ui-sans-serif, sans-serif;
+  font-weight: 700;
+  font-size: clamp(24px, 3vw, 32px);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+/* ---------------- Add-tab modal ---------------- */
+/* Fixed overlay, hidden by default - .is-open (toggled in app.js) is the
+   only thing that makes it visible, so there's no flash-of-modal on load
+   the way a bare display:flex would risk. */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  /* 27.7.2026 - bilo 10, ispod .settings-overlay (12, dijele ga i
+     Podešavanja i Katalog) - potvrda brisanja otvorena IZNAD već
+     otvorenog kataloga (npr. "Ukloni trajno" na app tile-u) je
+     završavala vizuelno ISPOD njega, nepotvrdiva. Mora biti iznad SVAKOG
+     drugog overlay-a koji je mogao biti već otvoren kad se ona pojavi. */
+  z-index: 15;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 9, 7, .72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.modal-overlay.is-open {
+  display: flex;
+}
+
+.modal {
+  width: 420px;
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  background: var(--modal-bg);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 28px;
+  opacity: 0;
+  transform: scale(.96) translateY(6px);
+  animation: pop .3s cubic-bezier(.22,1,.36,1) forwards;
+}
+.modal h2 {
+  margin: 0 0 20px;
+  font-family: "Inter", sans-serif;
+  font-weight: 700;
+  font-size: 19px;
+}
+.modal-field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin: 20px 0 8px;
+}
+/* First field-label right under the h2 (the "Ime" label, wrapped in
+   .modal-name-field) doesn't need the same top gap the h2's own
+   margin-bottom already provides - was previously done via
+   :not(:first-of-type), which silently never matched anything once the
+   name field got wrapped in its own div (label and the "Ikonica" div are
+   different tag types, so both independently count as "first of their
+   type" among siblings - a plain class override reads correctly instead
+   of relying on that fragile per-tag-type quirk). */
+.modal-name-field .modal-field-label {
+  margin-top: 0;
+}
+/* 'add-section' mode (21.7.2026) hides the whole icon field - sections
+   get a name only, no icon. (Name field itself is never hidden anymore -
+   first version hid it for tab icon-editing, but that mode grew a name
+   field of its own too, see openTabModal() in app.js - .modal-name-field
+   keeps this same hide-the-whole-field convention even though nothing
+   currently triggers it, in case a future mode needs it again.) */
+.modal-name-field.is-hidden,
+.modal-icon-field.is-hidden {
+  display: none;
+}
+.modal-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: "Inter", sans-serif;
+  transition: border-color .15s ease;
+}
+.modal-input:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), .55);
+}
+
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+.icon-grid-btn {
+  all: unset;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+.icon-grid-btn svg {
+  width: 18px;
+  height: 18px;
+}
+.icon-grid-btn:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, .2);
+}
+.icon-grid-btn.is-selected {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), .6);
+  background: rgba(var(--accent-rgb), .08);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+.modal-btn {
+  all: unset;
+  padding: 9px 16px;
+  border-radius: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: "Inter", sans-serif;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, opacity .15s ease;
+}
+.modal-btn-ghost {
+  color: var(--text-soft);
+}
+.modal-btn-ghost:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, .04);
+}
+.modal-btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.modal-btn-primary:hover {
+  background: var(--accent-hover);
+}
+/* Disabled until both a name is typed AND an icon is picked - see
+   updateAddTabConfirmState() in app.js. */
+.modal-btn-primary:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ---------------- Floating action menu ---------------- */
+
+.fab-menu {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  z-index: 6;
+}
+
+.fab-main,
+.fab-action {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.fab-main {
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(var(--accent-rgb), .35), 0 2px 8px rgba(0, 0, 0, .3);
+  transition: transform .22s cubic-bezier(.22, 1, .36, 1), box-shadow .18s ease, background .18s ease;
+}
+.fab-main:hover {
+  transform: scale(1.06);
+  background: var(--accent-hover);
+  box-shadow: 0 10px 28px rgba(var(--accent-rgb), .45), 0 2px 8px rgba(0, 0, 0, .3);
+}
+.fab-main:active { transform: scale(.96); }
+.fab-main svg {
+  width: 22px;
+  height: 22px;
+  transition: transform .28s cubic-bezier(.22, 1, .36, 1);
+}
+.fab-menu.is-open .fab-main svg { transform: rotate(45deg); }
+
+.fab-actions {
+  position: absolute;
+  right: 0;
+  bottom: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 9px;
+  pointer-events: none;
+  visibility: hidden;
+  transition: visibility 0s linear .28s;
+}
+
+.fab-action {
+  height: 42px;
+  min-width: max-content;
+  padding: 0 13px 0 15px;
+  border-radius: 21px;
+  border: 1px solid rgba(255,255,255,.11);
+  background: rgba(var(--floating-rgb), .78);
+  color: var(--text-soft);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  transform: translateY(12px) scale(.94);
+  transform-origin: right bottom;
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  box-shadow: 0 12px 34px rgba(0,0,0,.32);
+  transition:
+    opacity .18s ease,
+    transform .28s cubic-bezier(.22, 1, .36, 1),
+    color .15s ease,
+    border-color .15s ease,
+    background .15s ease;
+}
+.fab-action:first-child { transition-delay: 35ms, 35ms, 0ms, 0ms, 0ms; }
+.fab-action:hover {
+  color: var(--text);
+  border-color: rgba(var(--accent-rgb),.38);
+  background: rgba(var(--floating-hover-rgb), .9);
+}
+.fab-action span {
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+}
+.fab-action svg {
+  width: 17px;
+  height: 17px;
+  color: var(--accent);
+}
+.fab-menu.is-open .fab-actions {
+  pointer-events: auto;
+  visibility: visible;
+  transition-delay: 0s;
+}
+.fab-menu.is-open .fab-action {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* ---------------- Global settings glass ---------------- */
+
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(6, 6, 6, .42);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  transition: opacity .2s ease, visibility 0s linear .2s;
+}
+.settings-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+.settings-glass {
+  width: min(620px, 100%);
+  max-height: min(760px, calc(100vh - 48px));
+  overflow-y: auto;
+  padding: 24px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(var(--glass-start-rgb),.82), rgba(var(--glass-end-rgb),.74));
+  box-shadow: 0 26px 80px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.06);
+  backdrop-filter: blur(26px) saturate(135%);
+  -webkit-backdrop-filter: blur(26px) saturate(135%);
+  transform: translateY(14px) scale(.97);
+  transition: transform .3s cubic-bezier(.22, 1, .36, 1);
+}
+.settings-overlay.is-open .settings-glass { transform: translateY(0) scale(1); }
+
+.settings-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.settings-eyebrow {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--accent);
+  font-family: "Inter", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.settings-head h2 {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  font-size: 21px;
+  letter-spacing: -.02em;
+}
+.settings-close {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.09);
+  background: rgba(255,255,255,.035);
+  color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+.settings-close:hover {
+  color: var(--text);
+  border-color: rgba(255,255,255,.18);
+  background: rgba(255,255,255,.07);
+}
+.settings-close svg { width: 15px; height: 15px; }
+
+.settings-row {
+  min-height: 72px;
+  padding: 14px 15px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  background: rgba(255,255,255,.025);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.settings-section {
+  margin-bottom: 16px;
+}
+.settings-section-label {
+  margin: 0 0 10px;
+  color: var(--text-faint);
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.theme-choice {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  min-height: 76px;
+  padding: 11px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  background: rgba(255,255,255,.025);
+  color: var(--text-soft);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  outline: none;
+  transition: color .18s ease, border-color .18s ease, background .18s ease, transform .18s ease;
+}
+.theme-choice:focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), .72);
+  outline-offset: 2px;
+}
+.theme-choice:hover {
+  color: var(--text);
+  border-color: rgba(255,255,255,.18);
+  background: rgba(255,255,255,.05);
+  transform: translateY(-1px);
+}
+.theme-choice[aria-checked="true"] {
+  color: var(--text);
+  border-color: rgba(var(--accent-rgb), .55);
+  background: rgba(var(--accent-rgb), .08);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), .08);
+}
+.theme-choice[aria-checked="true"]::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), .7);
+}
+.theme-palette {
+  display: flex;
+  width: 62px;
+  height: 22px;
+  margin-bottom: 9px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 7px;
+}
+.theme-palette span { flex: 1; }
+.theme-palette span:nth-child(1) { background: var(--preview-bg); }
+.theme-palette span:nth-child(2) { background: var(--preview-card); }
+.theme-palette span:nth-child(3) { background: var(--preview-accent); }
+.theme-choice-name {
+  display: block;
+  overflow: hidden;
+  font-family: "Inter", sans-serif;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.theme-choice--custom {
+  padding-right: 30px;
+}
+.theme-choice-edit {
+  -webkit-appearance: none;
+  appearance: none;
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  background: rgba(255,255,255,.06);
+  color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity .16s ease, transform .16s ease, color .16s ease, background .16s ease;
+}
+.theme-choice-edit svg {
+  width: 12px;
+  height: 12px;
+}
+.theme-choice--custom:hover .theme-choice-edit,
+.theme-choice--custom:focus-within .theme-choice-edit,
+.theme-choice-edit:focus-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.theme-choice-edit:hover {
+  color: var(--text);
+  background: rgba(var(--accent-rgb), .18);
+}
+.custom-theme-open {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 8px;
+  padding: 0 13px;
+  border: 1px dashed rgba(255,255,255,.12);
+  border-radius: 11px;
+  background: rgba(255,255,255,.018);
+  color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: "Inter", sans-serif;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: color .18s ease, border-color .18s ease, background .18s ease;
+}
+.custom-theme-open:hover,
+.custom-theme-open[aria-expanded="true"] {
+  color: var(--text);
+  border-color: rgba(var(--accent-rgb), .4);
+  background: rgba(var(--accent-rgb), .055);
+}
+.custom-theme-open svg {
+  width: 15px;
+  height: 15px;
+  color: var(--accent);
+  transition: transform .25s cubic-bezier(.22, 1, .36, 1);
+}
+.custom-theme-open[aria-expanded="true"] svg { transform: rotate(45deg); }
+.custom-theme-editor {
+  margin-top: 8px;
+  padding: 14px;
+  border: 1px solid rgba(var(--accent-rgb), .22);
+  border-radius: 12px;
+  background: rgba(var(--accent-rgb), .035);
+}
+.custom-theme-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 156px;
+  gap: 10px;
+}
+.custom-theme-field {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--text-faint);
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+  font-weight: 650;
+}
+.custom-theme-field > input,
+.custom-color-control {
+  height: 38px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 9px;
+  background: rgba(0,0,0,.16);
+}
+.custom-theme-field > input {
+  width: 100%;
+  padding: 0 11px;
+  color: var(--text);
+  font: 500 12px "Inter", sans-serif;
+  outline: none;
+  transition: border-color .15s ease, background .15s ease;
+}
+.custom-theme-field > input:focus {
+  border-color: rgba(var(--accent-rgb), .55);
+  background: rgba(0,0,0,.24);
+}
+.custom-color-control {
+  padding: 5px 8px 5px 5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.custom-color-control input[type="color"] {
+  width: 31px;
+  height: 26px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  overflow: hidden;
+  cursor: pointer;
+}
+.custom-color-control input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.custom-color-control input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 6px; }
+.custom-color-control output {
+  color: var(--text-soft);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: .02em;
+}
+.custom-theme-preview-wrap {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.custom-theme-preview-wrap > span {
+  color: var(--text-faint);
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+  font-weight: 650;
+}
+.custom-theme-preview {
+  width: 180px;
+  height: 28px;
+  flex: none;
+  display: flex;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 8px;
+}
+.custom-theme-preview span { flex: 1; }
+.custom-theme-preview span:nth-child(1) { background: var(--custom-preview-bg); }
+.custom-theme-preview span:nth-child(2) { background: var(--custom-preview-sidebar); }
+.custom-theme-preview span:nth-child(3) { background: var(--custom-preview-card); }
+.custom-theme-preview span:nth-child(4) { background: var(--custom-preview-border); }
+.custom-theme-preview span:nth-child(5) { background: var(--custom-preview-accent); }
+.custom-theme-preview span:nth-child(6) { background: var(--custom-preview-highlight); }
+.custom-theme-actions {
+  margin-top: 13px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.custom-theme-cancel,
+.custom-theme-save {
+  min-height: 34px;
+  padding: 0 13px;
+  border-radius: 9px;
+  font: 650 11px "Inter", sans-serif;
+  cursor: pointer;
+  transition: color .15s ease, background .15s ease, opacity .15s ease, transform .15s ease;
+}
+.custom-theme-cancel {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-faint);
+}
+.custom-theme-cancel:hover { color: var(--text); background: rgba(255,255,255,.04); }
+/* "Obriši temu" (27.7.2026) - samo za SOPSTVENU (custom) temu, nikad
+   ugrađene - guran u lijevi ugao (margin-right:auto), odvojen od
+   Otkaži/Sačuvaj para koji ostaje desno. */
+.custom-theme-delete {
+  min-height: 34px;
+  padding: 0 13px;
+  border-radius: 9px;
+  font: 650 11px "Inter", sans-serif;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #ff8d8d;
+  margin-right: auto;
+  transition: color .15s ease, background .15s ease;
+}
+.custom-theme-delete:hover { color: #ff5c5c; background: rgba(255, 92, 92, .12); }
+.custom-theme-save {
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.custom-theme-save:hover { background: var(--accent-hover); transform: translateY(-1px); }
+.custom-theme-save:disabled { opacity: .35; pointer-events: none; }
+.settings-row strong,
+.settings-row span {
+  display: block;
+  font-family: "Inter", sans-serif;
+}
+.settings-row strong { font-size: 14px; font-weight: 650; }
+.settings-row > div > span {
+  margin-top: 5px;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.toggle-switch {
+  width: 46px;
+  height: 26px;
+  flex: none;
+  padding: 3px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 13px;
+  background: var(--switch-bg);
+  cursor: pointer;
+  transition: background .2s ease, border-color .2s ease;
+}
+.toggle-switch span {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  transform: translateX(0);
+  transition: transform .25s cubic-bezier(.22, 1, .36, 1), background .2s ease, box-shadow .2s ease;
+}
+.toggle-switch[aria-checked="true"] {
+  background: rgba(var(--accent-rgb),.22);
+  border-color: rgba(var(--accent-rgb),.45);
+}
+.toggle-switch[aria-checked="true"] span {
+  background: var(--accent);
+  transform: translateX(20px);
+  box-shadow: 0 0 12px rgba(var(--accent-rgb),.4);
+}
+
+/* ---------------- Responsive ---------------- */
+
+@media (max-width: 760px) {
+  .app { flex-direction: column; }
+  .sidebar {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    padding: 14px 16px;
+    gap: 18px;
+    overflow-x: auto;
+  }
+  .nav { flex-direction: row; }
+  .nav-item { padding: 8px 10px; }
+  .nav-row[data-tab-id] .nav-item { padding-left: 36px; }
+  /* Collapse is a desktop-only affordance - .sidebar's width is already
+     hardcoded to 100% here regardless of --sidebar-w, so toggling it
+     would do nothing useful, and the button's absolute right:-11px
+     position (meant to straddle a narrow vertical sidebar's edge) has no
+     sensible place to sit against a full-width horizontal bar. */
+  .sidebar-toggle { display: none; }
+  .fab-menu { right: 18px; bottom: 18px; }
+  .settings-glass { padding: 20px; }
+  .theme-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .custom-theme-fields { grid-template-columns: 1fr; }
+  .custom-theme-preview-wrap { align-items: flex-start; flex-direction: column; }
+  .custom-theme-preview { width: 100%; }
+  /* left/right stay on the same dynamic, GRID-aligned vars as desktop
+     (see updateBoardWidth() in app.js) - a hardcoded 24px here would
+     un-align the dot grid from the board's edge on narrow screens,
+     same bug as the pre-fix desktop version had */
+  .view { padding: 40px var(--safe-x-right, 24px) 80px var(--safe-x, 24px); }
+  .fx-frame { left: 0; }
+}
+
+/* ---------------- Organization UX layer (22.7.2026) ---------------- */
+
+button:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), .82) !important;
+  outline-offset: 2px;
+}
+
+.sidebar {
+  min-height: 0;
+}
+
+.nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 3px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--accent-rgb), .25) transparent;
+}
+.nav-add {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  background: color-mix(in srgb, var(--sidebar-bg) 94%, transparent);
+  border-top: 1px solid transparent;
+}
+.nav-add:hover { border-top-color: var(--border); }
+.nav-label { text-overflow: ellipsis; }
+.nav-row .nav-item { box-sizing: border-box; }
+.nav-row[data-tab-id] .nav-item { padding-right: 82px; }
+.nav-row[hidden] { display: none !important; }
+.nav-logo-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 7px rgba(var(--accent-rgb), .28));
+}
+.nav-row-actions { pointer-events: none; }
+.nav-row:hover .nav-row-actions,
+.nav-row:focus-within .nav-row-actions { opacity: 1; pointer-events: auto; }
+.nav-duplicate { all: unset; width: 22px; height: 22px; display:flex; align-items:center; justify-content:center; border-radius:2px; cursor:pointer; color:var(--text-soft); }
+.nav-duplicate:hover { color: var(--accent); background: rgba(var(--accent-rgb), .12); }
+.nav-duplicate svg { width:13px; height:13px; }
+.save-status {
+  position: fixed;
+  top: calc(var(--topbar-h) + 14px);
+  right: 22px;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(var(--floating-rgb), .88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: var(--text-soft);
+  font: 600 11px/1 "Inter", sans-serif;
+  transition: opacity .2s ease, border-color .2s ease;
+}
+.save-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #46c37b; box-shadow: 0 0 8px rgba(70,195,123,.45); }
+.save-status.is-saving .save-status-dot { background: var(--accent); animation: save-pulse .8s ease-in-out infinite alternate; }
+.save-status.is-error { border-color: rgba(255,92,92,.45); color: #ff9a9a; }
+.save-status.is-error .save-status-dot { background: #ff5c5c; }
+.save-status.is-quiet { opacity: .64; }
+@keyframes save-pulse { to { opacity: .35; } }
+/* Opcioni toggle u Podešavanjima (27.7.2026) - "Sačuvano" indikator
+   nekima smeta/odvlači pažnju tokom snimanja epizoda. */
+.save-status-hidden .save-status { display: none; }
+
+.board-empty {
+  grid-column: 1 / -1;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px dashed color-mix(in srgb, var(--border) 82%, var(--accent));
+  border-radius: 2px;
+  background: rgba(255,255,255,.012);
+  text-align: center;
+  color: var(--text-soft);
+}
+.board-empty strong { color: var(--text); font-size: 16px; }
+.board-empty span { max-width: 46ch; font-size: 13px; line-height: 1.55; }
+.board-empty-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:8px; }
+.board-empty button { border:1px solid var(--border); background:rgba(255,255,255,.025); color:var(--text); border-radius:2px; padding:9px 12px; cursor:pointer; font:600 12px/1 "Inter",sans-serif; }
+.board-empty button:first-child { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+
+.pcard { cursor: grab; min-width: 0; }
+.pcard:active { cursor: grabbing; }
+.pcard.is-locked,
+.layout-locked .pcard { cursor: default; }
+.pcard-inner { top: 38px; }
+.pcard-header {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 7px 0 8px;
+  border-bottom: 1px solid rgba(255,255,255,.035);
+  z-index: 4;
+}
+.pcard-drag-handle {
+  all: unset;
+  width: 28px;
+  height: 28px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:2px;
+  cursor: grab;
+  color: var(--text-soft);
+  /* Sekcija se ne može pomjerati dok je zaključana - ikonica se sad
+     u potpunosti sklanja (27.7.2026, ranije samo opacity:.28) umjesto
+     da ostane kao polu-vidljiv nagovještaj funkcije koja ne radi.
+     width/margin (ne display:none) da tekst pored glatko "klizne" u
+     oslobođeni prostor, ne skoči. */
+  flex: none;
+  overflow: hidden;
+  transition: width .22s cubic-bezier(.22,1,.36,1), opacity .18s ease, margin-right .22s cubic-bezier(.22,1,.36,1);
+}
+.pcard.is-locked .pcard-drag-handle {
+  width: 0;
+  opacity: 0;
+  margin-right: -7px;
+  pointer-events: none;
+}
+.pcard-drag-handle::before { content:'⠿'; font-size:17px; letter-spacing:-2px; }
+.pcard-drag-handle:hover { color:var(--accent); background:rgba(var(--accent-rgb),.09); }
+.pcard-drag-handle:active { cursor:grabbing; }
+.pcard-name {
+  position: static;
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1;
+}
+.pcard-menu-toggle {
+  all: unset;
+  width: 30px;
+  height: 30px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:2px;
+  color:var(--text-soft);
+  cursor:pointer;
+  font-size:17px;
+  letter-spacing:1px;
+}
+.pcard-menu-toggle:hover,
+.pcard-menu-toggle[aria-expanded="true"] { color:var(--text); background:rgba(var(--accent-rgb),.09); }
+.pcard-menu {
+  position:absolute;
+  top:34px;
+  right:6px;
+  z-index:12;
+  width:190px;
+  padding:6px;
+  border:1px solid var(--border);
+  border-radius:3px;
+  background:rgba(var(--floating-rgb),.98);
+  box-shadow:0 18px 38px rgba(0,0,0,.48);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+}
+.pcard-menu[hidden] { display:none; }
+.pcard-menu button {
+  width:100%;
+  border:0;
+  border-radius:2px;
+  background:transparent;
+  color:var(--text-soft);
+  text-align:left;
+  padding:8px 9px;
+  cursor:pointer;
+  font:600 12px/1.2 "Inter",sans-serif;
+}
+.pcard-menu button:hover { color:var(--text); background:rgba(var(--accent-rgb),.09); }
+.pcard-menu button.danger:hover { color:#ff8585; background:rgba(255,92,92,.11); }
+.pcard-size-row { display:grid; grid-template-columns:repeat(4,1fr); gap:3px; padding:5px 3px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); margin:3px 0; }
+.pcard-size-row button { text-align:center; padding:7px 2px; }
+.pcard.is-collapsed { grid-row: span 2 !important; min-height:42px; }
+.pcard.is-collapsed .pcard-inner,
+.pcard.is-collapsed .pcard-edge { display:none; }
+/* 27.7.2026 - bilo opacity:.28 (blijedo ali i dalje vidljivo) - Ognjenov
+   zahtjev da zaključana sekcija u potpunosti sakrije debele resize
+   linije, ne samo izblijedi ih. */
+.pcard.is-locked .pcard-edge { opacity: 0; pointer-events: none; }
+.layout-locked .pcard-drag-handle,
+.layout-locked .pcard-edge,
+.layout-locked .pcard-menu-toggle { display:none; }
+.layout-locked .pcard-header { padding-left:12px; }
+
+.modal-help { min-height:18px; margin:12px 0 -10px; color:var(--text-soft); font-size:12px; }
+.modal-help.is-error { color:#ff8c8c; }
+.modal-compact { width:380px; }
+.confirm-message { margin:0; color:var(--text-soft); font-size:14px; line-height:1.55; }
+.modal-btn-danger { background:#c84343; color:#fff; }
+.modal-btn-danger:hover { background:#dc5050; }
+
+.settings-data-section { padding-bottom:0; }
+.settings-data-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.settings-data-actions button {
+  border:1px solid var(--border);
+  border-radius:2px;
+  background:rgba(255,255,255,.025);
+  color:var(--text);
+  padding:9px 11px;
+  cursor:pointer;
+  font:600 12px/1 "Inter",sans-serif;
+}
+.settings-data-actions button:hover { border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.07); }
+.settings-data-actions button.danger { color:#ff8d8d; }
+.settings-data-help { margin:10px 0 0; color:var(--text-soft); font-size:11px; line-height:1.5; }
+/* Verzija dashboarda, dno Podešavanja (27.7.2026) - prva javna verzija. */
+.settings-version { margin:18px 0 2px; padding-top:14px; border-top:1px solid var(--border); color:var(--text-faint); font-size:11px; text-align:center; }
+
+.toast {
+  position:fixed;
+  left:50%;
+  bottom:28px;
+  z-index:30;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  max-width:min(520px,calc(100vw - 32px));
+  padding:12px 14px;
+  border:1px solid var(--border);
+  border-radius:3px;
+  background:rgba(var(--floating-rgb),.98);
+  box-shadow:0 16px 36px rgba(0,0,0,.48);
+  color:var(--text);
+  font:600 13px/1.35 "Inter",sans-serif;
+  opacity:0;
+  pointer-events:none;
+  transform:translate(-50%,10px);
+  transition:opacity .2s ease,transform .2s ease;
+}
+.toast.is-open { opacity:1; pointer-events:auto; transform:translate(-50%,0); }
+.toast button { border:0; background:transparent; color:var(--accent-highlight); font:700 12px/1 "Inter",sans-serif; cursor:pointer; }
+
+.canvas-wrap { padding-bottom:76px; }
+/* Home tab-ov skriven "board" (23.7.2026) - postoji samo da zajednička
+   board bootstrap infrastruktura (updateBoardWidth/alignDotGridToBoard
+   u app.js) ima gdje da se zakači; Home više nije klasičan radni tab.
+   NIJE display:none namjerno - ostaje u normalnom toku (mjerljiva
+   pozicija za dot-grid fazu koju DIJELE svi ostali tabovi), samo
+   vizuelno spljošten na 0 visine. */
+.board-inert { height: 0; min-height: 0; margin: 0; padding: 0; border: 0; overflow: hidden; }
+.board { grid-auto-flow: row; }
+
+@media (max-width: 760px) {
+  .sidebar {
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    grid-template-rows:auto;
+    align-items:center;
+    overflow:visible;
+    padding:10px 12px 9px;
+  }
+  .nav { grid-column:1; grid-row:1; flex-direction:row; overflow-x:auto; overflow-y:hidden; min-height:44px; padding:0; scrollbar-width:none; }
+  .nav::-webkit-scrollbar { display:none; }
+  .nav-add { position:sticky; right:0; bottom:auto; flex:none; min-height:40px; background:var(--sidebar-bg); border-left:1px solid var(--border); border-top:0; }
+  .nav-row { flex:none; width:260px; }
+  .nav-row .nav-item { width:260px; }
+  .nav-row-actions { opacity:1; pointer-events:auto; right:3px; }
+  .nav-row .nav-item { padding-right:72px; }
+  .nav-row[data-tab-id] .nav-item { padding-left:38px; }
+  .nav-edit-icon,.nav-delete,.nav-duplicate { width:30px; height:30px; }
+  .nav-delete { display:flex; }
+  .nav-duplicate { display:none; }
+  .nav-drag-handle { width:30px; height:34px; }
+  .save-status { top:auto; right:auto; left:12px; bottom:12px; min-height:28px; }
+  .view { padding-top:30px; padding-bottom:120px; }
+  .wizard-heading { margin-bottom:16px; }
+  .pcard-header { height:46px; }
+  .pcard-inner { top:46px; }
+  .pcard-drag-handle,.pcard-menu-toggle { width:40px; height:40px; }
+  .pcard-edge-right { width:24px; right:-12px; opacity:.35; }
+  .pcard-edge-bottom { height:24px; bottom:-12px; opacity:.35; }
+  .pcard-menu { position:fixed; left:12px; right:12px; top:auto; bottom:78px; width:auto; }
+  .pcard-menu button { min-height:42px; }
+  .settings-data-actions { display:grid; grid-template-columns:1fr; }
+  .settings-data-actions button { min-height:44px; }
+  .toast { bottom:58px; }
+  .fab-menu { bottom:72px; }
+}
+
+/* ---------------- App/widget sloj (23.7.2026) ---------------- */
+/* Aplikacije panel dijeli settings-overlay/glass osnovu (isti glass
+   jezik namjerno) - ovdje su samo razlike i novi elementi. */
+
+.apps-glass { width: min(720px, calc(100vw - 40px)); }
+
+.apps-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.apps-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.apps-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  color: var(--text-faint);
+  pointer-events: none;
+}
+.apps-search {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: rgba(255,255,255,.025);
+  color: var(--text);
+  padding: 10px 12px 10px 32px;
+  font: 500 13px/1.2 "Inter", sans-serif;
+}
+.apps-search:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), .6);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .12);
+}
+.apps-mode {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  flex: none;
+}
+.apps-mode-btn {
+  border: 0;
+  background: transparent;
+  color: var(--text-soft);
+  padding: 10px 14px;
+  cursor: pointer;
+  font: 600 12px/1 "Inter", sans-serif;
+}
+.apps-mode-btn.is-active {
+  background: rgba(var(--accent-rgb), .14);
+  color: var(--text);
+}
+
+/* ---- "Prava app ikonica" komponenta (23.7.2026, Ognjenov zahtjev) ----
+   Jedan vizuelni jezik za "ovo je aplikacija" kroz cijeli dashboard:
+   veliki obojen kvadrat (iOS-squircle aproksimacija preko border-radius
+   procenta) + ikonica u sredini, isti token u katalogu, folder
+   pločicama, folder pick listi i Podešavanjima (samo druga veličina). */
+.app-icon-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: 22%;
+  background: linear-gradient(155deg, var(--accent) 0%, var(--accent-hover) 100%);
+  color: var(--accent-ink);
+  box-shadow: 0 3px 8px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.14);
+}
+.app-icon-tile svg { width: 52%; height: 52%; }
+.app-icon-tile--lg { width: 56px; height: 56px; }
+.app-icon-tile--md { width: 44px; height: 44px; }
+.app-icon-tile--sm { width: 30px; height: 30px; }
+.app-icon-tile--sm svg { width: 55%; height: 55%; }
+
+/* Generički "app tile" (ikonica + ime ispod, klik = pokreni) - koristi
+   ga katalog (apps-catalog-tile modifikator) i folder pločice. */
+.app-tile {
+  border: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 4px;
+  cursor: pointer;
+  color: var(--text);
+  font: 600 11.5px/1.3 "Inter", sans-serif;
+  text-align: center;
+  transition: transform .15s cubic-bezier(.22,1,.36,1);
+}
+.app-tile:hover { transform: translateY(-2px); }
+.app-tile:hover .app-icon-tile { box-shadow: 0 6px 14px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.16); }
+.app-tile:active { transform: translateY(0) scale(.94); }
+.app-tile-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-tile-fixed-note { color: var(--text-faint); font-size: 9.5px; font-style: italic; font-weight: 500; }
+/* "Ukloni trajno" (27.7.2026) - Aplikacije tile je prestao biti SAM
+   <button> (nije se moglo ugnijezditi drugo dugme za brisanje unutra) -
+   wrapper je sad div, klik-da-otvori je poseban .app-tile-header koji
+   ovdje NASLIJEĐUJE tačno stari .app-tile izgled (kolona, centrirano)
+   umjesto reda-po-widthu koji koristi Widgeti prikaz niže. */
+.apps-catalog-tile { position: relative; padding: 0; }
+.apps-catalog-tile .app-tile-header {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 4px;
+  font: 600 11.5px/1.3 "Inter", sans-serif;
+  text-align: center;
+  transition: transform .15s cubic-bezier(.22,1,.36,1);
+}
+.apps-catalog-tile .app-tile-header:hover { transform: translateY(-2px); }
+.apps-catalog-tile .app-tile-header:active { transform: translateY(0) scale(.94); }
+.app-tile-delete {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 2;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, .35);
+  color: var(--text-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s ease, color .15s ease, background .15s ease;
+}
+.app-tile-delete svg { width: 11px; height: 11px; }
+.apps-catalog-tile:hover .app-tile-delete,
+.app-tile--widget:hover .app-tile-delete,
+.app-tile-delete:focus-visible { opacity: 1; }
+.app-tile-delete:hover, .app-tile-delete:focus-visible { color: #ff8585; background: rgba(255, 92, 92, .25); }
+.app-tile-sizes { display: flex; gap: 4px; }
+.app-tile-size-pill {
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.04);
+  color: var(--text-soft);
+  border-radius: 2px;
+  min-width: 22px;
+  padding: 3px 0;
+  cursor: pointer;
+  font: 700 10px/1 "Inter", sans-serif;
+}
+.app-tile-size-pill:hover { border-color: rgba(var(--accent-rgb), .6); background: rgba(var(--accent-rgb), .12); color: var(--text); }
+.app-tile-size-pill.is-default { border-color: rgba(var(--accent-rgb), .5); }
+
+.apps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 6px;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding: 4px 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--accent-rgb), .25) transparent;
+}
+/* Widgeti prikaz (23.7.2026) - šira kolona da stane header + živi
+   pregled + size pilule, umjesto samo ikonica+ime kao Aplikacije. */
+.apps-grid.is-widgets-mode { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.apps-no-results { grid-column: 1 / -1; margin: 8px 0; color: var(--text-soft); font-size: 13px; }
+
+.app-tile--widget {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, .015);
+  cursor: grab;
+}
+.app-tile--widget:active { cursor: grabbing; }
+.app-tile-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text);
+  font: 600 12px/1.2 "Inter", sans-serif;
+  text-align: left;
+}
+.app-tile-header:hover .app-icon-tile { box-shadow: 0 6px 14px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.16); }
+.app-tile-header .app-tile-name { flex: 1; min-width: 0; }
+/* Živi widget pregled - stvaran AIZdravo.renderInto render, ali
+   neinteraktivan (inert + pointer-events:none) - klik/tastatura padaju
+   kroz na .app-tile-header iznad, nikad slučajno ne dotaknu pravi
+   textarea/dugme alata unutra. aspect-ratio prati alatovu DEFAULT S/M/L
+   veličinu (col:row) da pregled realno nagovijesti proporcije na
+   boardu, ne proizvoljnu kutiju. */
+.app-tile-preview {
+  /* width:100% + height:auto (24.7.2026 fix) - so aspect-ratio derives
+     HEIGHT from the tile's already-known width, never the reverse. Left
+     both auto before, and for a wide preset (e.g. 26:11) the flex column
+     layout resolved the aspect ratio by computing WIDTH from the
+     max-height-clamped height instead - the preview ended up wider than
+     its own tile and spilled out past the grid column (caught live on
+     the Izvještaji widget's catalog preview). An explicit width makes
+     aspect-ratio only free to affect height, which max-height + the
+     existing overflow:hidden below can then safely clip. */
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, .015);
+  overflow: hidden;
+  pointer-events: none;
+  font-size: 11px;
+  max-height: 130px;
+}
+.app-tile-preview:empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  font-size: 10px;
+}
+.app-tile-preview:empty::after { content: 'Nema pregleda'; }
+.apps-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  border: 1px dashed var(--border);
+  border-radius: 3px;
+  padding: 22px;
+}
+.apps-empty strong { color: var(--text); font-size: 14px; }
+.apps-empty span { color: var(--text-soft); font-size: 12px; line-height: 1.55; max-width: 56ch; }
+.apps-empty code, .settings-data-help code {
+  background: rgba(255,255,255,.06);
+  border-radius: 2px;
+  padding: 1px 5px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+}
+
+/* Sadržaj widget/folder kartice - puni .pcard-inner ispod headera,
+   sopstveni scroll kad sadržaj ne stane. Ne dira resize edge ručke
+   (one su siblings, apsolutno na ivicama, viši z-index). */
+.pcard-app-content {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  padding: 10px;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--accent-rgb), .25) transparent;
+}
+/* Widget sadržaj ne nasljeđuje veliku centriranu ikonicu kartice -
+   ta pravila (.pcard-inner svg 30px + hover accent) su za PRAZNU
+   custom karticu; unutar app sadržaja svg je normalan element. */
+.pcard-app-content svg { width: 14px; height: 14px; }
+.pcard:hover .pcard-app-content svg { color: currentColor; }
+.pcard[data-type="widget"] .pcard-inner > svg,
+.pcard[data-type="folder"] .pcard-inner > svg { display: none; }
+
+.app-render-error {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border: 1px dashed rgba(255, 140, 100, .4);
+  border-radius: 3px;
+}
+.app-render-error strong { color: var(--text); font-size: 13px; }
+.app-render-error span { color: var(--text-soft); font-size: 12px; line-height: 1.5; }
+
+.pcard-fixed-size .pcard-edge { display: none; }
+
+/* Folder sekcija: grid klikabilnih pločica - iste "prave app ikonice"
+   (.app-tile/.app-icon-tile--md) kao katalog, bez border kutije oko
+   tile-a, tačno kao iPhone home screen unutar foldera. */
+.folder-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 4px;
+  align-content: start;
+}
+.folder-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+.folder-empty button {
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.025);
+  color: var(--text);
+  border-radius: 2px;
+  padding: 8px 11px;
+  cursor: pointer;
+  font: 600 12px/1 "Inter", sans-serif;
+}
+.folder-empty button:hover { border-color: rgba(var(--accent-rgb), .5); }
+
+/* Tip sekcije u "Nova sekcija" modalu */
+.modal-type-field[hidden], .modal-folder-field[hidden] { display: none; }
+.section-type-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.section-type-btn {
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: rgba(255,255,255,.02);
+  color: var(--text-soft);
+  padding: 10px 11px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.section-type-btn strong { color: var(--text); font-size: 12px; }
+.section-type-btn span { font-size: 11px; line-height: 1.4; }
+.section-type-btn:hover { border-color: rgba(var(--accent-rgb), .45); }
+.section-type-btn.is-selected {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), .09);
+}
+
+.folder-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  scrollbar-width: thin;
+}
+.folder-pick-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 8px 9px;
+  cursor: pointer;
+  color: var(--text-soft);
+  font: 600 12px/1.2 "Inter", sans-serif;
+}
+.folder-pick-item:hover { background: rgba(var(--accent-rgb), .06); color: var(--text); }
+.folder-pick-item input { accent-color: var(--accent); }
+.folder-pick-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.folder-pick-empty { margin: 0 0 12px; color: var(--text-soft); font-size: 12px; line-height: 1.5; }
+
+/* Podešavanja: instalirani alati */
+.installed-apps { display: flex; flex-direction: column; gap: 6px; }
+.installed-app-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 9px 10px;
+}
+.installed-app-row.is-disabled { opacity: .55; }
+.installed-app-icon {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 22%;
+  background: linear-gradient(155deg, var(--accent) 0%, var(--accent-hover) 100%);
+  color: var(--accent-ink);
+  box-shadow: 0 2px 6px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.12);
+}
+.installed-app-icon svg { width: 55%; height: 55%; }
+.installed-app-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.installed-app-meta strong { font-size: 12px; color: var(--text); }
+.installed-app-meta span { font-size: 11px; color: var(--text-faint); }
+.installed-app-action {
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: rgba(255,255,255,.025);
+  color: var(--text);
+  padding: 7px 11px;
+  cursor: pointer;
+  font: 600 11px/1 "Inter", sans-serif;
+}
+.installed-app-action:hover { border-color: rgba(var(--accent-rgb), .5); }
+.installed-app-action.danger { color: #ff8d8d; }
+.installed-app-action.danger:hover { border-color: rgba(255,92,92,.5); background: rgba(255,92,92,.08); }
+.installed-apps-empty { margin: 0; color: var(--text-soft); font-size: 12px; }
+
+@media (max-width: 760px) {
+  .apps-controls { flex-direction: column; align-items: stretch; }
+  .apps-grid { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); max-height: 58vh; }
+  .section-type-row { grid-template-columns: 1fr; }
+}
+
+/* `hidden` atribut mora pobijediti author display pravila - UA-ov
+   display:none inače gubi od .apps-empty{display:flex} (uhvaćeno
+   screenshotom 23.7.2026: empty state vidljiv ispod stvarne kartice). */
+.apps-empty[hidden] { display: none; }
+
+/* ---------------- Welcome wizard (23.7.2026, treći prolaz) ----------------
+   Home tab je karusel od 7 koraka umjesto klasičnog radnog taba
+   (Ognjenov zahtjev). Ovo je treći redizajn istog dana - po feedback-u
+   poslije drugog prolaza: naslov+opis su izvučeni IZ mockup boxa (žive u
+   .wizard-heading/.wizard-desc, sinhronizovani preko app.js), pa je box
+   sam sad position:absolute;inset:0 unutar .wizard-slides - garantovano
+   puni MAKSIMALNU širinu/visinu preostalog prostora (prije je ostajao
+   prostor desno jer je .wizard imao max-width:980px i box je dijelio
+   kolonu sa naslovom/opisom iznad sebe). Strelice se centriraju prema
+   .wizard-stage-u čija visina sad prati SAMO box (nema više teksta u
+   istoj koloni), pa "strelice nisu centrirane prema boxu" nestaje samo
+   od sebe. Svaki korak ima animirani "mockup" koji POKAZUJE koncept -
+   čisti CSS keyframe loop-ovi, fejk podaci, ništa live/interaktivno. Sve
+   animacije se gase preko prefers-reduced-motion na dnu ovog bloka, isti
+   princip kao ember/dot-glow/burst efekti u app.js. */
+
+#view-home.is-active {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.wizard {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+/* min-height (24.7.2026) - opis se mijenja dužinom po koraku (1-3 reda
+   desktop), a .wizard-stage je flex:1 u ISTOJ koloni - kraći opis =
+   više preostalog prostora za stage = strelice (align-self:center) se
+   VIDLJIVO pomjeraju gore/dole između koraka. Fiksna min-visina
+   (najduži opis među svih 7 koraka, izmjereno uživo) drži stage
+   visinu - i time poziciju strelica - konstantnom bez obzira koji
+   korak je aktivan. */
+.wizard-desc { flex: none; margin-bottom: 16px; min-height: 100px; }
+/* max-width uklonjen (24.7.2026, Ognjenov zahtjev) - 74ch je umjetno
+   sužavao opis dok je box ispod već pun širine kolone. Bez ograničenja,
+   opis ide do iste desne (safe) ivice kao box - i uzgred prelama u MANJE
+   redova na širokim ekranima, što dodatno stabilizuje visinu opisa. */
+.wizard-step-desc { display: none; margin: 0; color: var(--text-soft); font-size: 14.5px; line-height: 1.6; }
+.wizard-step-desc.is-active { display: block; }
+.wizard-step-desc code {
+  background: rgba(255, 255, 255, .06);
+  border-radius: 2px;
+  padding: 1px 6px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12.5px;
+}
+
+.wizard-stage { flex: 1; min-height: 420px; display: flex; align-items: stretch; gap: 14px; }
+.wizard-nav {
+  flex: none;
+  align-self: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, .02);
+  color: var(--text-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.wizard-nav:hover { border-color: rgba(var(--accent-rgb), .5); color: var(--text); background: rgba(var(--accent-rgb), .07); }
+.wizard-nav svg { width: 17px; height: 17px; }
+.wizard-next svg { transform: scaleX(-1); }
+
+.wizard-slides { flex: 1; min-width: 0; position: relative; }
+
+/* Zajednička "scena" kutija koju sve mockup varijante dijele -
+   position:absolute;inset:0 unutar .wizard-slides garantuje da UVIJEK
+   popuni tačno preostali prostor (maksimalna širina I visina), umjesto
+   da zavisi od flex sadržaja iznad sebe. */
+.wizard-mockup {
+  position: absolute;
+  inset: 0;
+  display: none;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .015);
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 28px;
+}
+.wizard-mockup.is-active { display: flex; animation: wizard-slide-in .35s cubic-bezier(.22,1,.36,1); }
+@keyframes wizard-slide-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+.wizard-dots { display: flex; justify-content: center; gap: 9px; margin-top: 18px; flex: none; }
+.wizard-dot { width: 8px; height: 8px; border-radius: 50%; border: 0; padding: 0; background: var(--border); cursor: pointer; }
+.wizard-dot:hover { background: rgba(var(--accent-rgb), .5); }
+.wizard-dot.is-active { background: var(--accent); box-shadow: 0 0 8px rgba(var(--accent-rgb), .6); }
+
+/* -- 0/7: Pokretanje u Claude Code / Codex - folder-stablo, Python
+   provjera, mini browser. 27.7.2026: elementi su UVIJEK vidljivi (bez
+   pojavi-pa-nestani animacije - Ognjenov zahtjev nakon što je "treći
+   korak" (browser) izgledao kao da nestaje na kraju svake petlje) i
+   generalno veći - ovo je prvi utisak gledaoca, treba se lako čitati
+   bez čekanja da se nešto "otkrije". -- */
+.wm-folder-tree { display: flex; flex-direction: column; gap: 10px; flex: none; }
+.wm-folder-tree-name { display: flex; align-items: center; gap: 8px; font: 700 15px/1.2 "Inter", sans-serif; color: var(--text); }
+.wm-folder-tree-name svg { width: 18px; height: 18px; color: var(--accent); }
+.wm-folder-tree-file { padding-left: 26px; font: 13px/1.3 ui-monospace, "SF Mono", Menlo, monospace; color: var(--text-faint); }
+.wm-start-arrow { width: 22px; height: 22px; color: var(--text-faint); flex: none; transform: scaleX(-1); }
+
+.wm-start-ai { display: flex; flex-direction: column; gap: 10px; flex: none; }
+/* Chip par i Python-provjera chip su uvećani SAMO na ovom koraku - baza
+   .wm-ai-chip (niže u fajlu) ostaje netaknuta jer je dijeli i "Napravi
+   svoj alat" korak (6/7), koji ne treba ovu veličinu. Gap na cijelom
+   mockupu je stegnut (28px -> 18px, samo za ovaj korak) da četiri
+   elementa (chips/folder/python/browser, jedan više nego ranija tri)
+   stanu bez preklapanja/odsijecanja na ivici boxa - izmjereno uživo
+   (getBoundingClientRect) da bez ovoga sadržaj širi box za ~100px+. */
+.wizard-mockup--start { gap: 18px; }
+.wizard-mockup--start .wm-ai-chip { padding: 9px 15px; font-size: 13.5px; gap: 7px; }
+.wizard-mockup--start .wm-ai-chip svg { width: 16px; height: 16px; }
+.wm-python-chip { flex: none; padding: 8px 13px !important; }
+/* Kvačica pored imena foldera - trajno vidljiva (folder je "već otvoren"
+   u ovoj statičnoj sceni, ne animacija otvaranja). */
+.wm-folder-opened-check { margin-left: 6px; color: var(--accent); font-weight: 700; display: inline-block; }
+.wm-browser {
+  width: 205px;
+  flex: none;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #0f0f10;
+  overflow: hidden;
+}
+.wm-browser-bar { display: flex; align-items: center; gap: 7px; padding: 8px 10px; background: rgba(255, 255, 255, .04); }
+.wm-browser-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, .16); flex: none; }
+.wm-browser-url {
+  flex: 1;
+  min-width: 0;
+  font: 11.5px/1.2 ui-monospace, "SF Mono", Menlo, monospace;
+  color: rgba(255, 255, 255, .55);
+  background: rgba(255, 255, 255, .05);
+  border-radius: 5px;
+  padding: 3px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Zvjezdica je trajno "popunjena" (bookmark već sačuvan u ovoj statičnoj
+   sceni) umjesto animacije punjenja koja se na kraju petlje gasila. */
+.wm-browser-star { flex: none; font-size: 13px; line-height: 1; color: var(--accent); }
+.wm-browser-body { padding: 22px 16px; display: flex; align-items: center; justify-content: center; }
+.wm-browser-logo { width: 40px; height: auto; opacity: .85; }
+
+/* -- 1/7: Tabovi i sekcije - lijevo mini sidebar (indikator klizi među
+   3 taba), desno board "scena" koja se sinhrono mijenja (2 sekcije,
+   3 sekcije, 1 velika) - tri odvojene absolute-pozicionirane scene
+   koje crossfade-uju, jednostavnije i pouzdanije od morphovanja
+   pojedinačnih grid ćelija uživo. -- */
+.wizard-mockup--tabs { align-items: stretch; justify-content: flex-start; gap: 24px; }
+.wm-tabs-side { position: relative; display: flex; flex-direction: column; gap: 12px; width: 150px; flex: none; }
+.wm-tabs-item { position: relative; z-index: 1; display: flex; align-items: center; gap: 10px; padding: 10px 12px; height: 40px; }
+.wm-tabs-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, .16); flex: none; }
+.wm-tabs-label { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .12); }
+.wm-tabs-side-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 40px;
+  border-radius: 7px;
+  background: rgba(var(--accent-rgb), .14);
+  border: 1px solid rgba(var(--accent-rgb), .5);
+  animation: wm-side-slide 6s ease-in-out infinite;
+}
+@keyframes wm-side-slide {
+  0%, 28% { transform: translateY(0); }
+  33%, 61% { transform: translateY(52px); }
+  66%, 94% { transform: translateY(104px); }
+  100% { transform: translateY(0); }
+}
+.wm-tabs-canvas { position: relative; flex: 1; min-width: 0; }
+.wm-tabs-scene {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-auto-rows: 100%;
+  gap: 10px;
+  opacity: 0;
+}
+.wm-tabs-card { border-radius: 8px; background: rgba(255, 255, 255, .05); border: 1.5px dashed rgba(255, 255, 255, .16); }
+.wm-tabs-scene--1 { animation: wm-scene-1 6s ease-in-out infinite; }
+.wm-tabs-scene--2 { animation: wm-scene-2 6s ease-in-out infinite; }
+.wm-tabs-scene--3 { animation: wm-scene-3 6s ease-in-out infinite; }
+@keyframes wm-scene-1 { 0%, 3% { opacity: 0; } 8%, 26% { opacity: 1; } 33%, 100% { opacity: 0; } }
+@keyframes wm-scene-2 { 0%, 36% { opacity: 0; } 41%, 59% { opacity: 1; } 66%, 100% { opacity: 0; } }
+@keyframes wm-scene-3 { 0%, 69% { opacity: 0; } 74%, 92% { opacity: 1; } 97%, 100% { opacity: 0; } }
+
+/* -- 2/7: Katalog instaliranih alata - lijevo iPhone-stil "folder" sa 6
+   app ikonica (katalog), desno konkretan widget primjer (vremenska
+   prognoza) da se vidi STVARAN sadržaj, ne apstrakcija. -- */
+.wm-folder-preview { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.wm-folder-grid {
+  width: 168px;
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .06);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.wm-mini-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 22%;
+  background: linear-gradient(155deg, var(--accent), var(--accent-hover));
+  color: var(--accent-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: wm-mini-breathe 4s ease-in-out infinite;
+}
+.wm-mini-icon:nth-child(2) { animation-delay: .3s; }
+.wm-mini-icon:nth-child(3) { animation-delay: .6s; }
+.wm-mini-icon:nth-child(4) { animation-delay: .9s; }
+.wm-mini-icon:nth-child(5) { animation-delay: 1.2s; }
+.wm-mini-icon:nth-child(6) { animation-delay: 1.5s; }
+.wm-mini-icon svg { width: 55%; height: 55%; }
+@keyframes wm-mini-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+.wm-folder-caption { color: var(--text-faint); font-size: 12px; }
+.wm-widget-preview {
+  width: 180px;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, .02);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.wm-widget-icon { width: 42px; height: 42px; color: var(--accent); margin-bottom: 2px; animation: wm-widget-float 4s ease-in-out infinite; }
+.wm-widget-icon svg { width: 100%; height: 100%; }
+@keyframes wm-widget-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.wm-widget-temp { font-size: 32px; font-weight: 700; color: var(--text); line-height: 1; }
+.wm-widget-place { font-size: 12px; color: var(--text-faint); margin-bottom: 10px; }
+.wm-widget-days { display: flex; gap: 14px; }
+.wm-widget-days span { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--text-soft); }
+.wm-widget-days b { color: var(--text); font-size: 12px; }
+
+/* -- 3/7: Otvaranje aplikacije - redizajn: dole folder sa 6 aplikacija,
+   kursor "klikne" na vremensku prognozu (4. ikonica), gore se otvara
+   nova kartica sa detaljnim weather-widget mockupom, kursor onda klikne
+   na X i kartica se zatvara nazad na Dashboard. Kolona: toptabs (fiksno)
+   / stage (flex:1) / folder (fiksno), kursor position:absolute preko
+   svega, putanja u % (radi na bilo kojoj visini boxa jer je box sad
+   position:absolute;inset:0 i visina mu nije fiksna). ŠIRINA OBA TOPTABA
+   JE U % (ne fiksan px) - popravlja DVA odvojena bug-a: (1) raniji offset
+   na donjoj liniji-indikatoru kad su tabovi imali RAZLIČITU širinu prema
+   dužini teksta, (2) NOVOOTKRIVENI bug (23.7.2026) gdje su tabovi bili
+   fiksne px širine (168px) dok je kursorova putanja u %-ima - širina boxa
+   VARIRA (sidebar collapse/expand, viewport), pa je fiksan-px X postajao
+   POGREŠAN % kad god se box širina promijeni (izmjereno uživo: isti X
+   je bio 40.5% pri širini boxa 829px, a 32.7% pri širini 1025px -
+   kursor je "gađao" staru %, promašivao stvaran X, koji je onda
+   ispadalo da se "sam" pomjera/pritiska bez vidljivog kursora). Sad su
+   TAB ŠIRINA i KURSOR PUTANJA u istoj jedinici (%) pa se skaliraju
+   zajedno bez obzira na trenutnu širinu boxa. -- */
+.wizard-mockup--opentab { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0; padding: 0; }
+/* 24.7.2026 - .wm-toptabs-row je NOV unutrašnji wrapper (bez paddinga)
+   dodat jer je linija ispod aktivnog taba bila vidljivo van centra:
+   .wm-toptab-indicator je position:absolute, pa mu se % širina rješava
+   prema roditeljevoj PADDING kutiji (uklj. padding), dok .wm-toptab (obican
+   flex item, ne pozicioniran) svoju % širinu rješava prema roditeljevoj
+   CONTENT kutiji (bez paddinga) - ISTI roditelj, DVIJE različite referentne
+   širine za "istih" 21%, otud razlika od par desetina piksela koja se
+   uvećava kad se translateX(100%+gap) primijeni. Padding je premješten na
+   vanjski .wm-toptabs (koji sad NEMA position/flex, čisto padding), a
+   .wm-toptabs-row (bez paddinga) je stvarni flex/positioning kontekst -
+   sad su content-box i padding-box IDENTIČNI (nema paddinga na ovom
+   elementu), pa se oba računaju prema ISTOJ širini. */
+.wm-toptabs { padding: 16px 20px 0; flex: none; }
+.wm-toptabs-row { position: relative; display: flex; gap: 10px; }
+.wm-toptab {
+  position: relative;
+  z-index: 1;
+  width: 21%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 6px 6px 0 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+.wm-toptab b { overflow: hidden; text-overflow: ellipsis; }
+.wm-toptab svg { width: 15px; height: 15px; flex: none; }
+/* Bez margin-left:auto (24.7.2026) - guralo je × na sam desni rub taba,
+   daleko od teksta. Sad sjedi odmah pored imena, u istom gap-u kao
+   ikonica-tekst, cijeli klaster (ikonica+ime+×) centriran zajedno. */
+.wm-toptab-x { flex: none; font-style: normal; font-size: 15px; line-height: 1; opacity: .45; margin-left: 2px; }
+/* Cijela petlja (23.7.2026, druga ispravka kursora, Ognjenov zahtjev):
+   poslije klika na app ikonicu kursor NE ide odmah na X - vraća se na
+   NEUTRALNU sredinu i tu miruje (kao da "gleda" otvoren widget), pa tek
+   kad je vrijeme za zatvaranje ide gore do X i klikne. Putanje između
+   tačaka više nisu ravne linije - svaki prelaz ima jednu "krivinu"
+   tačku (blago pomjerenu od prave linije, naizmjenično lijevo/desno) da
+   pokret izgleda kao stvarno ručno pomjeranje miša, ne robotski skok.
+   8s ciklus (produžen sa 7s da stane pauza na sredini). Svih 6
+   tajmlajnova ispod (apptab/indikator/dash-scena/app-scena/target-press/
+   x-press/kursor) dijele ISTE postotke da ostanu sinhronizovani:
+   0-9% mirno na sredini, 9-19% dole do foldera (kriva), 19-25% klik +
+   otvara se, 25-35% gore-nazad do sredine (kriva), 35-55% mirno na
+   sredini (app otvoren, "gledanje"), 55-67% gore do X (kriva), 67-73%
+   klik + zatvara se, 73-83% dole-nazad do sredine (kriva), 83-100%
+   mirno na sredini. */
+.wm-toptab--app { opacity: 0; animation: wm-apptab-appear 8s ease-in-out infinite; }
+@keyframes wm-apptab-appear {
+  0%, 25% { opacity: 0; transform: translateX(-8px); }
+  30%, 67% { opacity: 1; transform: translateX(0); }
+  72%, 100% { opacity: 0; transform: translateX(-8px); }
+}
+/* Vanjski kontejner OSTAJE tačno tab-širine (21%) - to je i dalje
+   neophodno za translateX(100%+gap) self-relative trik ispod. Vidljiva
+   narandžasta linija je sad UNUTRAŠNJI centriran bar (24.7.2026,
+   Ognjenov zahtjev - linija je pokrivala CIJELU širinu taba, praznu
+   prostoriju uključujući, umjesto samo ispod ikonice+imena) - kontejner
+   sam je proziran, samo pozicionira/kliza, `.wm-toptab-indicator-bar`
+   je stvarna narandžasta linija, uža i centrirana preko flex
+   justify-content. */
+.wm-toptab-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2.5px;
+  width: 21%;
+  display: flex;
+  justify-content: center;
+  animation: wm-toptab-slide 8s ease-in-out infinite;
+}
+.wm-toptab-indicator-bar { width: 82%; height: 100%; border-radius: 2px; background: var(--accent); }
+/* translateX(100%) je 100% od SOPSTVENE širine indikatora (CSS transform
+   % se rješava prema layout boxu transformisanog elementa, ne roditelja)
+   - pošto su oba taba ISTE širine, ovo pomjeri indikator TAČNO na drugi
+   tab (sopstvena širina + fiksni gap od 10px), bez obzira na trenutnu
+   px širinu boxa. */
+@keyframes wm-toptab-slide {
+  0%, 25% { transform: translateX(0); }
+  30%, 67% { transform: translateX(calc(100% + 10px)); }
+  72%, 100% { transform: translateX(0); }
+}
+.wm-opentab-stage { position: relative; flex: 1; margin: 0 20px 16px; border: 1px solid var(--border); border-radius: 0 8px 8px 8px; background: rgba(255, 255, 255, .015); }
+.wm-opentab-scene { position: absolute; inset: 16px; display: flex; gap: 12px; }
+.wm-opentab-mini { flex: 1; border-radius: 7px; background: rgba(255, 255, 255, .05); border: 1.5px dashed rgba(255, 255, 255, .16); }
+.wm-opentab-scene--dash { animation: wm-scene-dash 8s ease-in-out infinite; }
+.wm-opentab-scene--app {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  animation: wm-scene-app 8s ease-in-out infinite;
+}
+@keyframes wm-scene-dash { 0%, 25% { opacity: 1; } 30%, 67% { opacity: 0; } 72%, 100% { opacity: 1; } }
+@keyframes wm-scene-app { 0%, 25% { opacity: 0; } 30%, 67% { opacity: 1; } 72%, 100% { opacity: 0; } }
+.wm-opentab-folder {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 20px 20px;
+}
+.wm-mini-icon--target { position: relative; animation: wm-mini-breathe 4s ease-in-out infinite, wm-target-press 8s ease-in-out infinite; }
+@keyframes wm-target-press { 0%, 17% { transform: scale(1); } 21% { transform: scale(.86); } 25%, 100% { transform: scale(1); } }
+/* Vizuelna potvrda klika i na X (ranije je samo kursor "pritiskao" - sad
+   i sam × bljesne/naraste u istom trenutku kad kursor stigne na njega). */
+.wm-toptab-x { animation: wm-x-press 8s ease-in-out infinite; }
+@keyframes wm-x-press {
+  0%, 63% { transform: scale(1); opacity: .45; }
+  67% { transform: scale(1.35); opacity: 1; }
+  71%, 100% { transform: scale(1); opacity: .45; }
+}
+.wm-opentab-cursor {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  color: #f4f4f4;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.5));
+  animation: wm-cursor-path 8s ease-in-out infinite;
+}
+.wm-opentab-cursor svg { width: 100%; height: 100%; }
+/* Potpuno pojednostavljeno (24.7.2026, treći pokušaj - Ognjenov zahtjev
+   da se kopira Canva-stil tutorijal kursor). Sva tri ranija pokušaja
+   (jedna "krivina" tačka, pa 4-tačkasta Bezier kriva sa per-tačka
+   easing-om, pa manja amplituda te iste krive) su i dalje izgledala
+   "haotično" - previše geometrije za jedan mali mockup kursor. Canva-
+   stil tutorijal kursori NE crtaju lukove - idu DIREKTNO od tačke do
+   tačke sa jednim glatkim ease-in-out (klasičan, najpouzdaniji glatak
+   CSS pattern - ubrzaj pa uspori, ništa više), a "osjećaj životnosti"
+   dolazi od RIPPLE efekta na klik (vidi .wm-click-ripple ispod), ne od
+   krivudave putanje. Samo DVA "prava" ciljna keyframe-a po prelazu
+   (start mirovanja → cilj), globalni ease-in-out na cijeloj animaciji. */
+@keyframes wm-cursor-path {
+  0%, 9%    { left: 50%; top: 46%; opacity: 1; transform: scale(1); }
+  19%       { left: 53%; top: 90.2%; opacity: 1; transform: scale(1); }
+  21%       { left: 53%; top: 90.2%; opacity: 1; transform: scale(.86); }
+  25%       { left: 53%; top: 90.2%; opacity: 1; transform: scale(1); }
+  35%, 55%  { left: 50%; top: 46%; opacity: 1; transform: scale(1); }
+  66%       { left: 40.4%; top: 8.2%; opacity: 1; transform: scale(1); }
+  67%       { left: 40.4%; top: 8.2%; opacity: 1; transform: scale(.82); }
+  71%       { left: 40.4%; top: 8.2%; opacity: 1; transform: scale(1); }
+  83%, 96%  { left: 50%; top: 46%; opacity: 1; transform: scale(1); }
+  100%      { left: 50%; top: 46%; opacity: 1; transform: scale(1); }
+}
+/* Ripple prsten na svakom kliku (isti obrazac kao "click highlight" alati
+   za snimanje ekrana/Canva tutorijali) - ekspandira i nestaje TAČNO u
+   trenutku kad kursor pritisne (folder ~21%, X ~67%), fiksno pozicioniran
+   na tačku klika (kursor je tu i tako nepomičan u tom trenutku). */
+.wm-click-ripple {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  margin-left: -13px;
+  margin-top: -13px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  opacity: 0;
+  transform: scale(.5);
+  pointer-events: none;
+}
+.wm-click-ripple--folder { left: 53%; top: 90.2%; animation: wm-ripple-folder 8s ease-out infinite; }
+.wm-click-ripple--x { left: 40.4%; top: 8.2%; animation: wm-ripple-x 8s ease-out infinite; }
+@keyframes wm-ripple-folder {
+  0%, 19% { opacity: 0; transform: scale(.5); }
+  21% { opacity: .9; transform: scale(.6); }
+  28% { opacity: 0; transform: scale(1.7); }
+  100% { opacity: 0; transform: scale(.5); }
+}
+@keyframes wm-ripple-x {
+  0%, 66% { opacity: 0; transform: scale(.5); }
+  67% { opacity: .9; transform: scale(.6); }
+  74% { opacity: 0; transform: scale(1.7); }
+  100% { opacity: 0; transform: scale(.5); }
+}
+
+/* -- 4/7: Tvoj stil - swatch red (svaka pulsira redom) PLUS mini "live"
+   prozor: kartica-border i akcentna tekst-linija SMOOTHLY prelaze boju
+   (obična ease interpolacija, ne steps() skok - Ognjenov zahtjev), i
+   umjesto lažnog "Dugme" teksta stoji samo obojena linija (isti mockup-
+   teksta stil kao siva dva reda iznad nje, samo u akcentnoj boji). -- */
+.wizard-mockup--colors { gap: 40px; }
+.wm-swatch-row { display: flex; flex-direction: column; gap: 16px; }
+.wm-swatch { width: 34px; height: 34px; border-radius: 50%; background: var(--wm-c); box-shadow: 0 0 0 rgba(0,0,0,0); animation: wm-swatch-pulse 5s ease-in-out infinite; }
+.wm-swatch:nth-child(1) { animation-delay: 0s; }
+.wm-swatch:nth-child(2) { animation-delay: 1s; }
+.wm-swatch:nth-child(3) { animation-delay: 2s; }
+.wm-swatch:nth-child(4) { animation-delay: 3s; }
+.wm-swatch:nth-child(5) { animation-delay: 4s; }
+/* Ispravka (24.7.2026): swatch glow je kulminirao na 16% SOPSTVENOG ciklusa
+   (t=0.8s uz nulti delay), a wm-window-cycle drži svaku boju STABILNOM
+   samo 0-16%/20-36%/40-56%... (sredina boje na t=0.4/1.4/2.4...) - glow
+   je time uvijek padao na SAM KRAJ perioda boje (tačno kad kreće prelaz
+   na sljedeću), ne na njenu sredinu, što je izgledalo kao offset/kašnjenje.
+   Peak pomjeren sa 16% na 8% (uz iste delay-e 0/1/2/3/4s) poklapa glow
+   TAČNO sa sredinom perioda svake boje u prozoru desno. */
+@keyframes wm-swatch-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 rgba(0,0,0,0); }
+  8% { transform: scale(1.3); box-shadow: 0 0 18px var(--wm-c); }
+  16%, 100% { transform: scale(1); box-shadow: 0 0 0 rgba(0,0,0,0); }
+}
+.wm-color-window {
+  width: 220px;
+  padding: 18px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, .02);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.wm-color-window-bar { height: 9px; width: 80%; border-radius: 4px; background: rgba(255, 255, 255, .12); }
+.wm-color-window-card {
+  height: 46px;
+  border-radius: 6px;
+  border: 2.5px solid #ff8c00;
+  animation: wm-window-cycle 5s ease-in-out infinite;
+}
+.wm-color-window-line {
+  height: 9px;
+  width: 55%;
+  border-radius: 4px;
+  background: #ff8c00;
+  animation: wm-window-cycle-bg 5s ease-in-out infinite;
+}
+@keyframes wm-window-cycle {
+  0%, 16% { border-color: #ff8c00; }
+  20% { border-color: #9b87f5; }
+  36% { border-color: #9b87f5; }
+  40% { border-color: #22d3ee; }
+  56% { border-color: #22d3ee; }
+  60% { border-color: #34d399; }
+  76% { border-color: #34d399; }
+  80% { border-color: #ff5c6c; }
+  96% { border-color: #ff5c6c; }
+  100% { border-color: #ff8c00; }
+}
+@keyframes wm-window-cycle-bg {
+  0%, 16% { background: #ff8c00; }
+  20% { background: #9b87f5; }
+  36% { background: #9b87f5; }
+  40% { background: #22d3ee; }
+  56% { background: #22d3ee; }
+  60% { background: #34d399; }
+  76% { background: #34d399; }
+  80% { background: #ff5c6c; }
+  96% { background: #ff5c6c; }
+  100% { background: #ff8c00; }
+}
+
+/* -- 5/7: Backup i prenos - fajl-ikonica -> tačka putuje -> uređaj-ikonica. -- */
+.wm-node {
+  width: 46px;
+  height: 46px;
+  border-radius: 22%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  z-index: 1;
+}
+.wm-node svg { width: 55%; height: 55%; }
+.wm-node--file { animation: wm-node-glow 3s ease-in-out infinite; }
+.wm-node--device { animation: wm-node-glow 3s ease-in-out infinite 1.5s; }
+@keyframes wm-node-glow {
+  0%, 15% { border-color: var(--border); color: var(--text-soft); }
+  28%, 42% { border-color: rgba(var(--accent-rgb), .6); color: var(--accent); }
+  55%, 100% { border-color: var(--border); color: var(--text-soft); }
+}
+.wm-backup-track { position: relative; width: 140px; height: 2px; background: repeating-linear-gradient(to right, rgba(255,255,255,.15) 0 7px, transparent 7px 14px); }
+.wm-backup-dot {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 9px;
+  height: 9px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 9px rgba(var(--accent-rgb), .7);
+  animation: wm-backup-travel 3s ease-in-out infinite;
+}
+@keyframes wm-backup-travel {
+  0%, 10% { left: 0; opacity: 0; }
+  20% { opacity: 1; }
+  45% { left: calc(100% - 9px); opacity: 1; }
+  55%, 100% { left: calc(100% - 9px); opacity: 0; }
+}
+
+/* -- 6/7: Napravi svoj alat - podijeljeno u DVA flow-a (nova aplikacija
+   / novi widget) jer su to dva različita puta (Ognjenov zahtjev), sa
+   dijeljenim "AI gradi" trakom ispod (kod kuca + Claude/Codex chipovi,
+   namjerno GENERIČNE ikonice + tekst, ne lažni brend logoi). -- */
+.wizard-mockup--build { flex-direction: column; align-items: stretch; justify-content: center; gap: 24px; max-width: 640px; margin: 0 auto; }
+.wm-build-cols { display: flex; gap: 32px; width: 100%; }
+.wm-build-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 11px; }
+.wm-build-col-title { font: 700 12px/1.2 "Inter", sans-serif; color: var(--text); text-transform: uppercase; letter-spacing: .05em; opacity: .65; margin-bottom: 3px; }
+.wm-build-step { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text-soft); line-height: 1.3; }
+.wm-build-num {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(var(--accent-rgb), .16);
+  color: var(--accent);
+  font: 700 11px/20px "Inter", sans-serif;
+  text-align: center;
+}
+.wm-build-ai { display: flex; align-items: center; gap: 22px; width: 100%; padding-top: 18px; border-top: 1px solid var(--border); position: relative; }
+.wm-code { display: flex; flex-direction: column; gap: 9px; flex: 1; min-width: 0; }
+.wm-code-line { height: 9px; border-radius: 5px; background: rgba(255, 255, 255, .12); width: 0; animation: wm-code-type 5s ease infinite; }
+.wm-code-line:nth-child(1) { animation-delay: 0s; }
+.wm-code-line:nth-child(2) { animation-delay: .4s; }
+.wm-code-line:nth-child(3) { animation-delay: .8s; }
+@keyframes wm-code-type {
+  0% { width: 0; }
+  16% { width: var(--wm-w); }
+  70% { width: var(--wm-w); }
+  84%, 100% { width: 0; }
+}
+.wm-code-caret { width: 3px; height: 16px; background: var(--accent); animation: wm-caret-blink 1s steps(1) infinite; }
+@keyframes wm-caret-blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+.wm-ai-chips { display: flex; flex: none; gap: 12px; }
+.wm-ai-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, .03);
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+.wm-ai-chip svg { width: 16px; height: 16px; color: var(--accent); }
+.wm-spark {
+  position: absolute;
+  right: 0;
+  top: -34px;
+  width: 28px;
+  height: 28px;
+  color: var(--accent);
+  opacity: 0;
+  animation: wm-spark-flicker 5s ease-in-out infinite;
+}
+.wm-spark svg { width: 100%; height: 100%; }
+@keyframes wm-spark-flicker {
+  0%, 78% { opacity: 0; transform: scale(.6) rotate(-10deg); }
+  88% { opacity: 1; transform: scale(1.15) rotate(4deg); }
+  100% { opacity: .85; transform: scale(1) rotate(0); }
+}
+
+@media (max-width: 1100px) {
+  .wizard-mockup { flex-direction: column; gap: 20px; padding: 20px; }
+  .wizard-mockup--tabs { flex-direction: row; }
+  .wizard-mockup--opentab { padding: 0; }
+  .wm-build-cols { gap: 20px; }
+  /* Korak 0 se preklapa u kolonu na ovom breakpointu isto kao generičko
+     pravilo iznad, ali strelice (samo horizontalni smisao) do 760px
+     ostaju vidljive po starom pravilu i guraju 4 stog-elementa preko
+     dijeljene 420px visine boxa (izmjereno uživo: sadržaj ~517px na
+     1000px širini) - sakrij ih i ovdje, ne samo ispod 760px. */
+  .wizard-mockup--start { gap: 14px; }
+  .wm-start-arrow { display: none; }
+}
+@media (max-width: 760px) {
+  .wizard-stage { min-height: 360px; }
+  .wizard-mockup { padding: 18px; gap: 16px; }
+  .wizard-mockup--tabs { flex-direction: column; }
+  .wm-tabs-side { width: 100%; flex-direction: row; justify-content: space-around; }
+  .wm-tabs-item { flex-direction: column; height: auto; }
+  .wm-tabs-side-indicator { display: none; }
+  .wizard-nav { width: 32px; height: 32px; }
+  #wizardStepTitle { font-size: 19px; }
+  /* Isti razlog kao desktop min-height iznad, samo veća vrijednost - na
+     uskom ekranu isti tekst prelama u više redova. 27.7.2026: korak 0
+     dobio dodatnu rečenicu (šta uraditi ako se laptop restartuje) - novi
+     najduži opis mjeri 325px na 375px širini (izmjereno uživo preko
+     getBoundingClientRect NA STVARNOM aktivnom paragrafu, ne procjenom -
+     prvo mjerenje na drugom kontekstu pogrešno pokazalo 255px), bio 175px
+     prije toga. */
+  .wizard-desc { min-height: 325px; }
+  /* Bez terminala od 24.7.2026 - sva četiri dijela (Claude/Codex chip,
+     folder, Python provjera, browser) staju vertikalno na mobilnom,
+     strelice (samo horizontalni smisao) se sakrivaju. 27.7.2026: dodat
+     četvrti dio (Python) je gurnuo ukupnu visinu preko dijeljenog
+     360px min-height-a (izmjereno uživo, sadržaj 397px vs box 360px) -
+     stegnut gap i sakriven jedan red fajl-liste (apps/ ostaje
+     podrazumijevan dio foldera, ne treba ga posebno ispisivati) da
+     stane bez odsijecanja vrha/dna, umjesto da se dira dijeljena
+     min-height (ista bi promijenila i ostalih 6 koraka). */
+  .wizard-mockup--start { flex-direction: column; gap: 10px; }
+  .wm-start-arrow { display: none; }
+  .wm-browser { width: 100%; max-width: 220px; }
+  .wm-browser-body { padding: 14px 16px; }
+  .wm-folder-tree-file:last-child { display: none; }
+  /* .wizard-mockup--opentab MORA ostati padding:0 i na ovom breakpointu -
+     generička .wizard-mockup{padding:18px} pravilo iznad (isti nivo
+     specifičnosti, ali kasnije u fajlu) bi ga inače pregazilo i pojeo
+     prostor koji fiksni toptab-ovi računaju, uzrokujući flex-shrink i
+     "Das..." skraćivanje teksta (uhvaćeno uživo 23.7.2026). */
+  .wizard-mockup--opentab { padding: 0; }
+  .wm-toptabs { padding: 10px 10px 0; }
+  .wm-toptabs-row { gap: 5px; }
+  .wm-toptab { width: 48%; flex-shrink: 0; padding: 7px 6px; font-size: 10.5px; gap: 4px; }
+  .wm-toptab svg { width: 12px; height: 12px; }
+  .wm-toptab-indicator { left: 0; width: 48%; }
+  @keyframes wm-toptab-slide {
+    0%, 25% { transform: translateX(0); }
+    30%, 67% { transform: translateX(calc(100% + 5px)); }
+    72%, 100% { transform: translateX(0); }
+  }
+  .wm-opentab-stage { margin: 0 10px 10px; }
+  .wm-opentab-folder { gap: 5px; padding: 8px 10px 14px; }
+  .wm-opentab-cursor { width: 15px; height: 15px; }
+  /* Dva stoga (aplikacija/widget) jedan iznad drugog na uskom ekranu su
+     viša od fiksne visine boxa - overflow:hidden bi odsjekao vrh/dno
+     (uhvaćeno uživo 23.7.2026, "NOVA APLIKACIJA" naslov je bio odsječen).
+     Umjesto stiskanja sadržaja, box na ovom koraku postaje interno
+     skrolabilan i kreće od vrha (ne centriran) - jedini mockup koji to
+     radi, opravdano jer je jedini sa toliko teksta u dva stoga. */
+  .wizard-mockup--build { justify-content: flex-start; align-items: stretch; overflow-y: auto; overflow-x: hidden; padding-top: 24px; padding-bottom: 24px; }
+  .wm-build-cols { flex-direction: column; gap: 16px; }
+  .wm-ai-chips { flex-wrap: wrap; gap: 8px; }
+  .wm-ai-chip { padding: 7px 12px; font-size: 12px; gap: 5px; }
+}
+
+/* Mirna, statična scena za prefers-reduced-motion - isti princip kao
+   ember/dot-glow/burst gašenje u app.js, samo CSS strana ovoga puta
+   (ovi mockupi su čist CSS, nemaju JS gate). Svaki element dobija
+   smislen MIRAN krajnji izgled umjesto da ostane zaleđen usred
+   nasumičnog trenutka animacije. */
+@media (prefers-reduced-motion: reduce) {
+  .wizard-mockup.is-active,
+  .wm-tabs-side-indicator, .wm-tabs-scene--1, .wm-tabs-scene--2, .wm-tabs-scene--3,
+  .wm-mini-icon, .wm-widget-icon,
+  .wm-toptab--app, .wm-toptab-indicator, .wm-opentab-scene--dash, .wm-opentab-scene--app,
+  .wm-mini-icon--target, .wm-opentab-cursor, .wm-toptab-x,
+  .wm-swatch, .wm-color-window-card, .wm-color-window-line,
+  .wm-node--file, .wm-node--device, .wm-backup-dot,
+  .wm-code-line, .wm-code-caret, .wm-spark,
+  .wm-click-ripple {
+    animation: none !important;
+  }
+  .wm-tabs-scene--1 { opacity: 1; }
+  .wm-tabs-scene--2, .wm-tabs-scene--3 { opacity: 0; }
+  .wm-toptab--app { opacity: 1; transform: none; }
+  .wm-opentab-scene--dash { opacity: 1; }
+  .wm-opentab-scene--app { opacity: 0; }
+  .wm-opentab-cursor { opacity: 0; }
+  .wm-click-ripple { opacity: 0 !important; }
+  .wm-code-line { width: var(--wm-w) !important; }
+  .wm-spark { opacity: .85 !important; transform: none !important; }
+}
+
+/* Podešavanja: odbijeni alati i podaci-bez-alata (23.7.2026) */
+.installed-app-row.is-rejected { border-color: rgba(255, 140, 100, .35); }
+.installed-app-row.is-rejected .installed-app-icon { background: rgba(255, 140, 100, .12); color: #ffab8a; }
+.installed-app-row.is-orphan .installed-app-icon { background: rgba(255,255,255,.05); color: var(--text-faint); }
+
+/* Podešavanja: "Gornja traka" identitet (23.7.2026) */
+.topbar-identity-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .02);
+}
+.topbar-identity-row .app-icon-tile img,
+.topbar-identity-row .app-icon-tile svg { width: 55%; height: 55%; }
+.topbar-identity-label { flex: 1; min-width: 0; color: var(--text); font: 600 13px/1.2 "Inter", sans-serif; }
+.topbar-identity-edit {
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, .025);
+  color: var(--text);
+  padding: 7px 12px;
+  cursor: pointer;
+  font: 600 11.5px/1 "Inter", sans-serif;
+}
+.topbar-identity-edit:hover { border-color: rgba(var(--accent-rgb), .5); }

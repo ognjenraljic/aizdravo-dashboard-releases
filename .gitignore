@@ -1,0 +1,13 @@
+# Dev-time error log (see server.py / index.html's inline error catcher)
+# - a build-phase safety net, not part of the shipped dashboard.
+errors.jsonl
+
+# Per-user dashboard state, written atomically by server.py.
+dashboard-state.json
+dashboard-state.json.tmp
+
+# Per-machine pid fajl (server.py --stop), samo dok je server živ.
+dashboard.pid
+
+# Log auto-pokrenutog servera (install-autostart-mac.command).
+dashboard-autostart.log

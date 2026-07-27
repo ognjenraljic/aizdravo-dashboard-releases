@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Zdravo Dashboard</title>
+<link rel="icon" type="image/png" href="assets/logo.png?v=2">
+<script>
+// Build-time error catcher (21.7.2026) - dev-time safety net, not a
+// shipped feature. Deliberately inline and first in <head>, before
+// vendor/sortable.min.js or app.js load, so it can catch a runtime
+// error thrown by EITHER of them, not just ones after some later
+// script finishes registering listeners. Writes to localStorage
+// (always works, including opened via file:// with no server - see the
+// "server not required" note in the Pokretanje section) and best-effort
+// POSTs to /api/log-error (silently no-ops without a server, e.g. under
+// file://) so a real errors.jsonl accumulates during normal dev-server
+// usage. This is the one and only place this file uses fetch() - see
+// the Pokretanje section for why that doesn't change the "no server
+// needed to just open it" story for anyone who downloads this repo.
+(function () {
+  var KEY = 'aizdravo:error-log';
+  var MAX = 200;
+  function record(entry) {
+    entry.t = Date.now();
+    entry.url = location.href;
+    try {
+      var log = JSON.parse(localStorage.getItem(KEY) || '[]');
+      log.push(entry);
+      if (log.length > MAX) log = log.slice(log.length - MAX);
+      localStorage.setItem(KEY, JSON.stringify(log));
+    } catch (e) { /* private-browsing/quota - losing the log isn't worth breaking the page over */ }
+    try {
+      fetch('/api/log-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+      }).catch(function () {});
+    } catch (e) { /* fetch itself throws under file:// - fine, localStorage above already has it */ }
+    console.error('[aizdravo]', entry);
+  }
+  window.addEventListener('error', function (e) {
+    record({
+      type: 'error',
+      message: e.message,
+      source: e.filename,
+      line: e.lineno,
+      col: e.colno,
+      stack: e.error && e.error.stack,
+    });
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    var reason = e.reason;
+    record({
+      type: 'unhandledrejection',
+      message: String((reason && reason.message) || reason),
+      stack: reason && reason.stack,
+    });
+  });
+})();
+</script>
+<link rel="stylesheet" href="style.css?v=87">
+</head>
+<body>
+
+<!-- Gornja traka kartica (23.7.2026) - "Dashboard" (pinovana, uvijek
+     prva, ne zatvara se) + jedna kartica po otvorenoj aplikaciji
+     (dinamički, app.js). Ovo je jedini prekidač između "vidim
+     dashboard" i "vidim SAMO tu aplikaciju, bez dashboard funkcija" -
+     namjerno potpuno odvojeno od lijevog sidebar-a (koji ostaje isti
+     tab sistem kao prije, samo za dashboard sekcije/boardove). -->
+<div class="top-tab-bar" id="topTabBar" role="tablist" aria-label="Otvorene stranice">
+  <button class="top-tab is-active" id="topTabDashboard" type="button" role="tab" aria-selected="true">
+    <span class="top-tab-label">Dashboard</span>
+  </button>
+  <!-- App kartice se ubacuju ovdje, vidi createAppPageDOM() u app.js. -->
+</div>
+
+<div class="app" id="app">
+
+  <aside class="sidebar" id="sidebar">
+    <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="Sažmi meni">
+      <svg><use href="#icon-chevron-left"></use></svg>
+    </button>
+    <nav class="nav" id="nav">
+      <div class="nav-row" data-tab-id="home" data-welcome-tab="true">
+        <button class="nav-drag-handle" type="button" title="Prevuci za promjenu redoslijeda" aria-label="Promijeni poziciju taba &quot;AI Zdravo&quot;">
+          <span aria-hidden="true"></span>
+        </button>
+        <button class="nav-item is-active" data-view="home" type="button">
+          <img class="nav-icon nav-logo-icon" src="assets/logo.png" alt="">
+          <span class="nav-label">AI Zdravo</span>
+        </button>
+        <div class="nav-row-actions">
+          <button class="nav-edit-icon" id="navEditHomeIcon" type="button" title="Uredi tab" aria-label="Uredi tab &quot;AI Zdravo&quot;">
+            <svg><use href="#icon-tabler-edit"></use></svg>
+          </button>
+          <button class="nav-duplicate" id="navDuplicateHome" type="button" title="Dupliciraj tab" aria-label="Dupliciraj tab &quot;AI Zdravo&quot;">
+            <svg><use href="#icon-tabler-file-text"></use></svg>
+          </button>
+          <button class="nav-delete" id="navDeleteHome" type="button" title="Obriši tab" aria-label="Obriši tab &quot;AI Zdravo&quot;">
+            <svg><use href="#icon-tabler-x"></use></svg>
+          </button>
+        </div>
+      </div>
+      <!-- 21.7.2026: the 4 skeleton placeholder tabs that used to live here
+           (data-view="p1".."p4", "sections not decided yet") are gone -
+           that's now literally what this + button is for. Custom tabs
+           render here dynamically from localStorage, see "Custom tabs"
+           in app.js. -->
+      <button class="nav-add" id="navAddTab" type="button">
+        <svg class="nav-icon"><use href="#icon-tabler-plus"></use></svg>
+        <span class="nav-label">Dodaj tab</span>
+      </button>
+      <div class="nav-indicator" id="navIndicator"></div>
+    </nav>
+
+  </aside>
+
+  <main class="canvas-wrap" id="canvasWrap">
+    <div class="ambient"></div>
+
+    <section class="view is-active" data-view="home" id="view-home">
+      <!-- Welcome wizard (23.7.2026, zamijenio stari showcase grid + board na
+           ovom tabu) - Ognjenov zahtjev: uvodni tab NIJE klasičan radni tab
+           (ne prima sekcije/widgete, vidi requestAddSection()/
+           addWidgetToActiveTab() guard u app.js), nego karusel sa strelicama
+           i tačkicama. JS kontroler: initWelcomeWizard() u app.js. -->
+      <!-- Treći prolaz 23.7.2026 (Ognjenov feedback poslije drugog
+           redizajna istog dana): logo + "Dobrodošli" tekst su sad INLINE sa
+           naslovom trenutnog koraka (jedan kompaktan zaglavni red - h2 više
+           NIJE dupliran u svakom koraku, nego JEDAN dijeljen #wizardStepTitle
+           koji initWelcomeWizard() puni iz data-title). Paragraf-opis je isto
+           izvučen u zaseban #wizardTexts blok - strelice u .wizard-stage sad
+           centriraju samo prema mockup boxu, ne prema cijeloj koloni teksta
+           iznad njega. Dodat nov korak 0 ("Pokretanje u Claude Code/Codex")
+           - prvo što gledalac treba da zna je GDJE da otvori AI alat kad
+           pravi/mijenja dashboard. */ -->
+      <div class="wizard" id="welcomeWizard">
+        <div class="wizard-heading">
+          <div class="wizard-heading-hero">
+            <div class="hero-mark">
+              <canvas id="emberCanvas"></canvas>
+              <img class="flame" src="assets/logo.png" alt="AI Zdravo logo">
+            </div>
+            <div class="hero-text">
+              <h1>Dobrodošli u Vaš <span class="accent">personalni operativni sistem</span>.</h1>
+              <p>Kratak vodič kroz ono što dashboard može - listaj strelicama ili tačkicama ispod.</p>
+            </div>
+          </div>
+          <h2 id="wizardStepTitle">Pokretanje u Claude Code / Codex</h2>
+        </div>
+
+        <div class="wizard-desc" id="wizardTexts">
+          <p class="wizard-step-desc is-active" data-step="0" data-title="Pokretanje u Claude Code / Codex">Otvori <strong>Claude Desktop</strong> aplikaciju, prijavi se, klikni na <strong>Code</strong> tab pa <strong>Novu sesiju</strong> - za "Project folder" izaberi ovaj preuzeti folder. Ili otvori <strong>ChatGPT desktop</strong> aplikaciju, iz padajućeg menija gore lijevo izaberi <strong>Codex</strong>, pa <strong>Otvori folder</strong> i izaberi isti folder. Nema terminala - sve je klik kroz aplikaciju. Alat kreće TAČNO u ovom folderu (gdje su <code>index.html</code>, <code>app.js</code>, <code>apps/</code>) i sam pročita uputstva: provjeri imaš li Python (i ponudi da ga instalira ako nemaš), pa pokrene dashboard i otvori ga na <code>localhost:8100</code>. Sačuvaj tu stranicu u Bookmarks (Cmd+D) - odsad samo klikni taj bookmark. Ako se laptop restartuje i bookmark prestane da se učitava, dvoklikni <code>start-mac.command</code> (ili <code>start-windows.bat</code>) u ovom folderu - ne moraš opet kroz Claude/Codex.</p>
+          <p class="wizard-step-desc" data-step="1" data-title="Tabovi i sekcije">Napravi tab za svaku temu. Svaki tab ima svoj nezavisan raspored sekcija - prevlačiš, razvlačiš po mreži, premještaš između tabova, sve se pamti samo.</p>
+          <p class="wizard-step-desc" data-step="2" data-title="Katalog instaliranih alata">Katalog svih instaliranih alata - otvori bilo koji kao punu aplikaciju, ili dodaj njegov widget na board. Primjer: vremenska prognoza kao mali widget.</p>
+          <p class="wizard-step-desc" data-step="3" data-title="Napravi svoj alat">Dva puta do novog alata: opiši Claude-u ili Codex-u šta želiš (ili zalijepi gotov prompt) - sam napiše kod i registruje ga. Ili prevuci gotov folder u <code>apps/</code> (npr. sa drugog dashboarda) i reci mu da ga učita. Widget odmah dodaješ na board iz kataloga, ili ga povežeš sa već pripremljenom sekcijom preko njenog menija ("Poveži alat").</p>
+          <p class="wizard-step-desc" data-step="4" data-title="Otvaranje aplikacije">Klik na app ikonicu je otvara kao novu karticu gore, preko cijelog ekrana. Klik na x je zatvara i vraća te tačno gdje si stao.</p>
+          <p class="wizard-step-desc" data-step="5" data-title="Tvoj stil">Šest ugrađenih tema, plus generator sopstvene palete iz jedne akcentne boje - dugmad, ivice sekcija i akcenti se prebojavaju odmah, svugdje.</p>
+          <p class="wizard-step-desc" data-step="6" data-title="Backup i prenos">Cijeli dashboard je samo jedan folder na disku - kopiraj ga na drugi računar (USB, cloud, AirDrop) i pokreni <code>start-mac.command</code> (ili <code>start-windows.bat</code>) tamo. Sve ide sa njim: tabovi, sekcije, teme, instalirani alati i njihovi podaci.</p>
+        </div>
+
+        <div class="wizard-stage">
+          <button class="wizard-nav wizard-prev" id="wizardPrev" type="button" aria-label="Prethodni korak">
+            <svg><use href="#icon-chevron-left"></use></svg>
+          </button>
+
+          <div class="wizard-slides" id="wizardSlides">
+
+            <!-- 0/7 Pokretanje - preurađeno 27.7.2026 (Ognjenov zahtjev:
+                 uvećaj elemente i neka su STALNO vidljivi - stara verzija je
+                 "otkrivala" kvačicu/browser preko animacije koja se na kraju
+                 6s petlje vraćala na nevidljivo, izgledalo je kao da nestaju).
+                 Animacija otkrivanja je u potpunosti uklonjena (vidi style.css)
+                 - svi elementi su sad statični i vidljivi od starta. Dodat
+                 četvrti beat (Python provjera) da mockup prati stvaran
+                 CLAUDE.md/AGENTS.md tok: Claude/Codex → otvara folder →
+                 provjerava Python → pokreće dashboard u browseru. -->
+            <div class="wizard-mockup wizard-mockup--start is-active" data-step="0" aria-hidden="true">
+              <div class="wm-start-ai">
+                <span class="wm-ai-chip"><svg><use href="#icon-brand-claude"></use></svg>Claude</span>
+                <span class="wm-ai-chip"><svg><use href="#icon-brand-openai"></use></svg>Codex</span>
+              </div>
+              <svg class="wm-start-arrow"><use href="#icon-chevron-left"></use></svg>
+              <div class="wm-folder-tree">
+                <span class="wm-folder-tree-name"><svg><use href="#icon-tabler-folder"></use></svg>ai-zdravo-dashboard<span class="wm-folder-opened-check">✓</span></span>
+                <span class="wm-folder-tree-file">index.html</span>
+                <span class="wm-folder-tree-file">app.js</span>
+                <span class="wm-folder-tree-file">apps/</span>
+              </div>
+              <svg class="wm-start-arrow"><use href="#icon-chevron-left"></use></svg>
+              <span class="wm-ai-chip wm-python-chip"><svg><use href="#icon-tabler-shield-check"></use></svg>Python ✓</span>
+              <svg class="wm-start-arrow"><use href="#icon-chevron-left"></use></svg>
+              <div class="wm-browser">
+                <div class="wm-browser-bar">
+                  <span class="wm-browser-dot"></span>
+                  <span class="wm-browser-url">localhost:8100</span>
+                  <span class="wm-browser-star">★</span>
+                </div>
+                <div class="wm-browser-body">
+                  <img class="wm-browser-logo" src="assets/logo.png" alt="">
+                </div>
+              </div>
+            </div>
+
+            <!-- 1/7 Tabovi i sekcije - lijevo mini sidebar sa 3 taba čiji
+                 se aktivan indikator pomjera, desno board scena koja se
+                 mijenja SINHRONO (2 sekcije / 3 sekcije / 1 velika) -
+                 pokazuje da svaki tab ima svoj nezavisan raspored. -->
+            <div class="wizard-mockup wizard-mockup--tabs" data-step="1" aria-hidden="true">
+              <div class="wm-tabs-side">
+                <span class="wm-tabs-item"><span class="wm-tabs-dot"></span><span class="wm-tabs-label" style="width:60%"></span></span>
+                <span class="wm-tabs-item"><span class="wm-tabs-dot"></span><span class="wm-tabs-label" style="width:80%"></span></span>
+                <span class="wm-tabs-item"><span class="wm-tabs-dot"></span><span class="wm-tabs-label" style="width:45%"></span></span>
+                <span class="wm-tabs-side-indicator"></span>
+              </div>
+              <div class="wm-tabs-canvas">
+                <div class="wm-tabs-scene wm-tabs-scene--1">
+                  <span class="wm-tabs-card" style="grid-column:span 3"></span>
+                  <span class="wm-tabs-card" style="grid-column:span 3"></span>
+                </div>
+                <div class="wm-tabs-scene wm-tabs-scene--2">
+                  <span class="wm-tabs-card" style="grid-column:span 2"></span>
+                  <span class="wm-tabs-card" style="grid-column:span 2"></span>
+                  <span class="wm-tabs-card" style="grid-column:span 2"></span>
+                </div>
+                <div class="wm-tabs-scene wm-tabs-scene--3">
+                  <span class="wm-tabs-card" style="grid-column:span 6"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2/7 Katalog instaliranih alata - lijevo iPhone-stil folder
+                 sa 6 app ikonica (katalog), desno konkretan primjer widgeta
+                 (vremenska prognoza) da se vidi kako STVARAN widget
+                 izgleda, ne samo apstraktna ikonica. -->
+            <div class="wizard-mockup wizard-mockup--appswidgets" data-step="2" aria-hidden="true">
+              <div class="wm-folder-preview">
+                <div class="wm-folder-grid">
+                  <span class="wm-mini-icon"><svg><use href="#icon-tabler-edit"></use></svg></span>
+                  <span class="wm-mini-icon"><svg><use href="#icon-tabler-video"></use></svg></span>
+                  <span class="wm-mini-icon"><svg><use href="#icon-tabler-chart-bar"></use></svg></span>
+                  <span class="wm-mini-icon"><svg><use href="#icon-tabler-mail"></use></svg></span>
+                  <span class="wm-mini-icon"><svg><use href="#icon-tabler-bell"></use></svg></span>
+                  <span class="wm-mini-icon"><svg><use href="#icon-tabler-tool"></use></svg></span>
+                </div>
+                <span class="wm-folder-caption">Katalog alata</span>
+              </div>
+              <div class="wm-widget-preview">
+                <span class="wm-widget-icon"><svg><use href="#icon-tabler-cloud"></use></svg></span>
+                <span class="wm-widget-temp">21°</span>
+                <span class="wm-widget-place">Banja Luka</span>
+                <div class="wm-widget-days">
+                  <span>Sri<b>19°</b></span>
+                  <span>Čet<b>22°</b></span>
+                  <span>Pet<b>18°</b></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3/7 Napravi svoj alat - preurađeno 27.7.2026 (Ognjenov
+                 zahtjev: prikaži KAKO se stvarno dodaje alat, ne apstraktnu
+                 "ime + ikonica" formu koja u stvarnoj arhitekturi ne
+                 postoji - alati se uvijek dodaju kroz kod: apps/<id>/app.js
+                 + jedna script linija, nikad kroz UI formu). Dva PUTA do
+                 istog rezultata, ne dvije forme (app/widget) kao ranije:
+                 promptovanje (Claude/Codex piše kod od nule) i prevlačenje
+                 gotovog fajla (folder već postoji, npr. sa drugog
+                 dashboarda) - oba završe u istom apps/ folderu + registraciji
+                 u index.html, .claude/skills/install-app to i radi. Premješteno
+                 27.7.2026 (Ognjenov zahtjev) da ide ODMAH poslije kataloga i
+                 PRIJE "Otvaranje aplikacije" - logičniji redoslijed priče
+                 (prvo dodaš alat, onda vidiš šta se dešava kad ga otvoriš). -->
+            <div class="wizard-mockup wizard-mockup--build" data-step="3" aria-hidden="true">
+              <div class="wm-build-cols">
+                <div class="wm-build-col">
+                  <span class="wm-build-col-title">Promptuj alat</span>
+                  <div class="wm-build-step"><span class="wm-build-num">1</span>Opiši šta želiš (ili zalijepi prompt)</div>
+                  <div class="wm-build-step"><span class="wm-build-num">2</span>Claude/Codex piše kod</div>
+                  <div class="wm-build-step"><span class="wm-build-num">3</span>Sam se registruje u katalogu</div>
+                </div>
+                <div class="wm-build-col">
+                  <span class="wm-build-col-title">Prevuci gotov fajl</span>
+                  <div class="wm-build-step"><span class="wm-build-num">1</span>Folder u apps/ (npr. sa drugog dashboarda)</div>
+                  <div class="wm-build-step"><span class="wm-build-num">2</span>Reci mu da ga učita</div>
+                  <div class="wm-build-step"><span class="wm-build-num">3</span>Automatski se registruje</div>
+                </div>
+              </div>
+              <div class="wm-build-ai">
+                <div class="wm-code">
+                  <span class="wm-code-line" style="--wm-w:78%"></span>
+                  <span class="wm-code-line" style="--wm-w:54%"></span>
+                  <span class="wm-code-line" style="--wm-w:66%"></span>
+                  <span class="wm-code-caret"></span>
+                </div>
+                <div class="wm-ai-chips">
+                  <span class="wm-ai-chip"><svg><use href="#icon-brand-claude"></use></svg>Claude</span>
+                  <span class="wm-ai-chip"><svg><use href="#icon-brand-openai"></use></svg>Codex</span>
+                </div>
+              </div>
+              <span class="wm-spark"><svg><use href="#icon-spark"></use></svg></span>
+            </div>
+
+            <!-- 4/7 Otvaranje aplikacije - redizajn: dole folder sa 6 app
+                 ikonica, animiran kursor "klikne" na vremensku prognozu, gore
+                 se otvara nova kartica sa detaljnim widget mockupom, kursor
+                 onda klikne na X i kartica se zatvara nazad na Dashboard. -->
+            <div class="wizard-mockup wizard-mockup--opentab" data-step="4" aria-hidden="true">
+              <div class="wm-toptabs">
+                <div class="wm-toptabs-row">
+                  <span class="wm-toptab wm-toptab--dashboard"><svg><use href="#icon-tabler-layout-grid"></use></svg><b>Dashboard</b></span>
+                  <span class="wm-toptab wm-toptab--app"><svg><use href="#icon-tabler-cloud"></use></svg><b>Vremenska prognoza</b><i class="wm-toptab-x">×</i></span>
+                  <span class="wm-toptab-indicator"><span class="wm-toptab-indicator-bar"></span></span>
+                </div>
+              </div>
+              <div class="wm-opentab-stage">
+                <span class="wm-opentab-scene wm-opentab-scene--dash">
+                  <span class="wm-opentab-mini"></span>
+                  <span class="wm-opentab-mini"></span>
+                </span>
+                <div class="wm-opentab-scene wm-opentab-scene--app">
+                  <span class="wm-widget-icon"><svg><use href="#icon-tabler-cloud"></use></svg></span>
+                  <span class="wm-widget-temp">21°</span>
+                  <span class="wm-widget-place">Banja Luka</span>
+                  <div class="wm-widget-days">
+                    <span>Sri<b>19°</b></span>
+                    <span>Čet<b>22°</b></span>
+                    <span>Pet<b>18°</b></span>
+                  </div>
+                </div>
+              </div>
+              <div class="wm-opentab-folder">
+                <span class="wm-mini-icon"><svg><use href="#icon-tabler-edit"></use></svg></span>
+                <span class="wm-mini-icon"><svg><use href="#icon-tabler-video"></use></svg></span>
+                <span class="wm-mini-icon"><svg><use href="#icon-tabler-chart-bar"></use></svg></span>
+                <span class="wm-mini-icon wm-mini-icon--target"><svg><use href="#icon-tabler-cloud"></use></svg></span>
+                <span class="wm-mini-icon"><svg><use href="#icon-tabler-bell"></use></svg></span>
+                <span class="wm-mini-icon"><svg><use href="#icon-tabler-tool"></use></svg></span>
+              </div>
+              <span class="wm-click-ripple wm-click-ripple--folder"></span>
+              <span class="wm-click-ripple wm-click-ripple--x"></span>
+              <span class="wm-opentab-cursor"><svg viewBox="0 0 24 24"><path d="M5 3l5.5 17 2.2-7.1L20 10.5z" fill="currentColor" stroke="rgba(0,0,0,.4)" stroke-width="1"/></svg></span>
+            </div>
+
+            <!-- 5/7 Tvoj stil - swatch red PLUS mini "live" prozor (border
+                 kartice + tekst-linija) koji smoothly prelazi boju u istom
+                 ritmu (transition, ne steps() skok) - pokazuje ŠTA se tačno
+                 preboji, ne samo da postoje boje. -->
+            <div class="wizard-mockup wizard-mockup--colors" data-step="5" aria-hidden="true">
+              <div class="wm-swatch-row">
+                <span class="wm-swatch" style="--wm-c:#ff8c00"></span>
+                <span class="wm-swatch" style="--wm-c:#9b87f5"></span>
+                <span class="wm-swatch" style="--wm-c:#22d3ee"></span>
+                <span class="wm-swatch" style="--wm-c:#34d399"></span>
+                <span class="wm-swatch" style="--wm-c:#ff5c6c"></span>
+              </div>
+              <div class="wm-color-window">
+                <span class="wm-color-window-bar"></span>
+                <span class="wm-color-window-bar" style="width:40%"></span>
+                <span class="wm-color-window-card"></span>
+                <span class="wm-color-window-line"></span>
+              </div>
+            </div>
+
+            <!-- 6/7 Backup i prenos - ikonica promijenjena sa "database"
+                 (backup-fajl) na "folder" 27.7.2026 (Ognjenov zahtjev:
+                 prenos je kopiranje CIJELOG foldera, ne export/import
+                 fajla - export/import backup dugmad su uklonjena iz
+                 Podešavanja iz istog razloga, vidi taj settings-section). -->
+            <div class="wizard-mockup wizard-mockup--backup" data-step="6" aria-hidden="true">
+              <span class="wm-node wm-node--file"><svg><use href="#icon-tabler-folder"></use></svg></span>
+              <span class="wm-backup-track"><span class="wm-backup-dot"></span></span>
+              <span class="wm-node wm-node--device"><svg><use href="#icon-tabler-layout-grid"></use></svg></span>
+            </div>
+
+          </div>
+
+          <button class="wizard-nav wizard-next" id="wizardNext" type="button" aria-label="Sljedeći korak">
+            <svg><use href="#icon-chevron-left"></use></svg>
+          </button>
+        </div>
+
+        <div class="wizard-dots" id="wizardDots" role="tablist" aria-label="Koraci vodiča">
+          <button class="wizard-dot is-active" type="button" data-step="0" role="tab" aria-selected="true" aria-label="Korak 1: Pokretanje u Claude Code / Codex"></button>
+          <button class="wizard-dot" type="button" data-step="1" role="tab" aria-selected="false" aria-label="Korak 2: Tabovi i sekcije"></button>
+          <button class="wizard-dot" type="button" data-step="2" role="tab" aria-selected="false" aria-label="Korak 3: Katalog instaliranih alata"></button>
+          <button class="wizard-dot" type="button" data-step="3" role="tab" aria-selected="false" aria-label="Korak 4: Napravi svoj alat"></button>
+          <button class="wizard-dot" type="button" data-step="4" role="tab" aria-selected="false" aria-label="Korak 5: Otvaranje aplikacije"></button>
+          <button class="wizard-dot" type="button" data-step="5" role="tab" aria-selected="false" aria-label="Korak 6: Tvoj stil"></button>
+          <button class="wizard-dot" type="button" data-step="6" role="tab" aria-selected="false" aria-label="Korak 7: Backup i prenos"></button>
+        </div>
+      </div>
+
+      <!-- Skriven "board" (23.7.2026) - postoji SAMO da zajednička board
+           infrastruktura (GRID/dot-phase/initBoard tvornica u app.js)
+           ima gdje da se zakači; Home tab više NIJE klasičan radni tab
+           (Ognjenov zahtjev) - sekcije/widgeti se ovdje ne mogu dodati
+           (blokirano u JS-u), ovaj div nikad nije vidljiv korisniku.
+           NIJE display:none (to bi mu obulilo geometriju na 0 i
+           poremetilo dot-grid fazu za SVE ostale tabove koji je dijele)
+           - ostaje u normalnom toku, samo vizuelno spljošten na 0
+           visine preko .board-inert (vidi style.css). -->
+      <div class="board board-inert" id="board" aria-hidden="true"></div>
+    </section>
+
+    <!-- Custom tabs (name + icon, added via the + button in the sidebar)
+         render their own <section class="view"> here dynamically - see
+         createTabDOM() in app.js. Nothing static needed, they're rebuilt
+         from localStorage on every load. -->
+  </main>
+</div>
+
+<!-- Puni ekran otvorene aplikacije (23.7.2026) - jedna <section
+     class="app-page"> po otvorenoj aplikaciji (createAppPageDOM() u
+     app.js), samo AKTIVNA ima .is-active. Prazan/hidden dok je
+     Dashboard aktivna kartica gore. -->
+<div class="app-fullscreen-pages" id="appFullscreenPages" hidden></div>
+
+<div class="save-status" id="saveStatus" role="status" aria-live="polite">
+  <span class="save-status-dot" aria-hidden="true"></span>
+  <span id="saveStatusText">Sačuvano</span>
+</div>
+
+<div class="fx-frame" id="fxFrame">
+  <canvas id="glowCanvas"></canvas>
+  <canvas id="burstCanvas"></canvas>
+</div>
+
+<!-- One persistent action button, with secondary actions revealed above
+     it only while the menu is open. -->
+<div class="fab-menu" id="fabMenu">
+  <div class="fab-actions" id="fabActions" aria-hidden="true">
+    <button class="fab-action" id="fabOpenApps" type="button">
+      <span>Alati</span>
+      <svg><use href="#icon-tabler-layout-grid"></use></svg>
+    </button>
+    <button class="fab-action" id="fabAddSection" type="button">
+      <span>Nova sekcija</span>
+      <svg><use href="#icon-tabler-plus"></use></svg>
+    </button>
+    <button class="fab-action" id="fabOpenSettings" type="button">
+      <span>Podešavanja</span>
+      <svg><use href="#icon-tabler-settings"></use></svg>
+    </button>
+  </div>
+  <button class="fab-main" id="fabMenuToggle" type="button" title="Otvori akcije" aria-label="Otvori akcije" aria-expanded="false" aria-controls="fabActions">
+    <svg><use href="#icon-tabler-plus"></use></svg>
+  </button>
+</div>
+
+<!-- Global dashboard settings. More controls can be added to this glass
+     panel later without changing the floating action menu. -->
+<div class="settings-overlay" id="settingsOverlay" aria-hidden="true">
+  <div class="settings-glass" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="settings-head">
+      <div>
+        <span class="settings-eyebrow">Dashboard</span>
+        <h2 id="settingsTitle">Globalna podešavanja</h2>
+      </div>
+      <button class="settings-close" id="settingsClose" type="button" aria-label="Zatvori podešavanja">
+        <svg><use href="#icon-tabler-x"></use></svg>
+      </button>
+    </div>
+    <div class="settings-section">
+      <p class="settings-section-label">Gornja traka</p>
+      <div class="topbar-identity-row">
+        <span class="app-icon-tile app-icon-tile--sm" id="topbarIdentityPreviewIcon"><img src="assets/logo.png" alt=""></span>
+        <span class="topbar-identity-label" id="topbarIdentityPreviewLabel">Dashboard</span>
+        <button type="button" class="topbar-identity-edit" id="topbarIdentityEdit">Uredi</button>
+      </div>
+    </div>
+    <div class="settings-section">
+      <p class="settings-section-label">Boja dashboarda</p>
+      <div class="theme-grid" id="themeGrid" role="radiogroup" aria-label="Izaberi boju dashboarda">
+        <button class="theme-choice" type="button" role="radio" aria-checked="true" data-theme-option="ai-zdravo" style="--preview-bg:#121212;--preview-card:#2a2a2a;--preview-accent:#ff8c00">
+          <span class="theme-palette" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="theme-choice-name">AI Zdravo</span>
+        </button>
+        <button class="theme-choice" type="button" role="radio" aria-checked="false" data-theme-option="neuralna-noc" style="--preview-bg:#0e0d14;--preview-card:#2c2940;--preview-accent:#9b87f5">
+          <span class="theme-palette" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="theme-choice-name">Neural</span>
+        </button>
+        <button class="theme-choice" type="button" role="radio" aria-checked="false" data-theme-option="jadranski-signal" style="--preview-bg:#0b1214;--preview-card:#22363b;--preview-accent:#22d3ee">
+          <span class="theme-palette" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="theme-choice-name">Jadran</span>
+        </button>
+        <button class="theme-choice" type="button" role="radio" aria-checked="false" data-theme-option="smaragdni-tok" style="--preview-bg:#0d1311;--preview-card:#28382f;--preview-accent:#34d399">
+          <span class="theme-palette" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="theme-choice-name">Smaragd</span>
+        </button>
+        <button class="theme-choice" type="button" role="radio" aria-checked="false" data-theme-option="crveni-puls" style="--preview-bg:#140e10;--preview-card:#3a282d;--preview-accent:#ff5c6c">
+          <span class="theme-palette" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="theme-choice-name">Rubin</span>
+        </button>
+        <button class="theme-choice" type="button" role="radio" aria-checked="false" data-theme-option="elektricni-san" style="--preview-bg:#0b0f16;--preview-card:#273349;--preview-accent:#5b8cff">
+          <span class="theme-palette" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="theme-choice-name">Electric</span>
+        </button>
+        <!-- Sopstvene teme (množina, 27.7.2026) - renderuju se OVDJE
+             dinamički preko renderCustomThemeTiles() u app.js, jedna po
+             sačuvanoj temi u customThemes nizu. Nema više statične
+             pojedinačne kartice - vidi APPS_AND_WIDGETS.md analogiju:
+             isti princip kao dinamički katalog, samo za teme. -->
+      </div>
+      <button class="custom-theme-open" id="customThemeOpen" type="button" aria-expanded="false" aria-controls="customThemeEditor">
+        <svg><use href="#icon-tabler-plus"></use></svg>
+        <span id="customThemeOpenLabel">Dodaj sopstvenu temu</span>
+      </button>
+      <div class="custom-theme-editor" id="customThemeEditor" hidden>
+        <div class="custom-theme-fields">
+          <label class="custom-theme-field">
+            <span>Ime teme</span>
+            <input id="customThemeName" type="text" maxlength="28" placeholder="npr. Moj studio" autocomplete="off">
+          </label>
+          <label class="custom-theme-field custom-theme-color-field">
+            <span>Akcentna boja</span>
+            <span class="custom-color-control">
+              <input id="customThemeAccent" type="color" value="#e879f9" aria-label="Izaberi akcentnu boju">
+              <output id="customThemeHex" for="customThemeAccent">#e879f9</output>
+            </span>
+          </label>
+        </div>
+        <div class="custom-theme-preview-wrap">
+          <span>Automatska paleta</span>
+          <div class="custom-theme-preview" id="customThemePreview" aria-label="Pregled automatski izračunate palete">
+            <span title="Pozadina"></span><span title="Sidebar"></span><span title="Kartice"></span><span title="Borderi"></span><span title="Akcent"></span><span title="Highlight"></span>
+          </div>
+        </div>
+        <div class="custom-theme-actions">
+          <button class="custom-theme-delete danger" id="customThemeDelete" type="button" hidden>Obriši temu</button>
+          <button class="custom-theme-cancel" id="customThemeCancel" type="button">Otkaži</button>
+          <button class="custom-theme-save" id="customThemeSave" type="button" disabled>Sačuvaj temu</button>
+        </div>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div>
+        <strong>Pozadinski grid</strong>
+        <span>Prikaži tačkastu mrežu na platnu</span>
+      </div>
+      <button class="toggle-switch" id="gridToggle" type="button" role="switch" aria-checked="true" aria-label="Prikaži pozadinski grid">
+        <span></span>
+      </button>
+    </div>
+    <div class="settings-row">
+      <div>
+        <strong>Zaključaj raspored</strong>
+        <span>Sakrij kontrole i spriječi slučajno pomjeranje</span>
+      </div>
+      <button class="toggle-switch" id="layoutLockToggle" type="button" role="switch" aria-checked="false" aria-label="Zaključaj raspored dashboarda">
+        <span></span>
+      </button>
+    </div>
+    <div class="settings-row">
+      <div>
+        <strong>Status čuvanja</strong>
+        <span>Prikaži "Sačuvano" indikator gore desno</span>
+      </div>
+      <button class="toggle-switch" id="saveStatusToggle" type="button" role="switch" aria-checked="true" aria-label="Prikaži status čuvanja">
+        <span></span>
+      </button>
+    </div>
+    <div class="settings-section settings-data-section">
+      <p class="settings-section-label">Podaci dashboarda</p>
+      <div class="settings-data-actions">
+        <button type="button" class="danger" id="resetDashboard">Vrati početno stanje</button>
+      </div>
+      <p class="settings-data-help">Prenos na drugi računar: kopiraj cijeli ovaj folder (dashboard-state.json nosi tabove/sekcije/teme, apps/ nosi instalirane alate) i pokreni start-mac.command/start-windows.bat tamo.</p>
+    </div>
+    <p class="settings-version">AI Zdravo Dashboard v1.0.0</p>
+  </div>
+</div>
+
+<!-- Aplikacije/Widgeti panel (23.7.2026) - centralni glass katalog svih
+     registrovanih alata. Isti vizuelni jezik kao Podešavanja
+     (settings-overlay/glass klase se dijele namjerno - jedan izvor
+     stila za sve velike glass panele). "Aplikacije" prikaz otvara alat
+     kao poseban tab; "Widgeti" prikaz dodaje widget instancu na
+     trenutno aktivan tab. -->
+<div class="settings-overlay apps-overlay" id="appsOverlay" aria-hidden="true">
+  <div class="settings-glass apps-glass" role="dialog" aria-modal="true" aria-labelledby="appsTitle">
+    <div class="settings-head">
+      <div>
+        <span class="settings-eyebrow">Katalog</span>
+        <h2 id="appsTitle">Aplikacije</h2>
+      </div>
+      <button class="settings-close" id="appsClose" type="button" aria-label="Zatvori aplikacije">
+        <svg><use href="#icon-tabler-x"></use></svg>
+      </button>
+    </div>
+    <div class="apps-controls">
+      <div class="apps-search-wrap">
+        <svg class="apps-search-icon"><use href="#icon-tabler-search"></use></svg>
+        <input class="apps-search" id="appsSearch" type="search" placeholder="Pretraži aplikacije..." autocomplete="off" aria-label="Pretraži aplikacije">
+      </div>
+      <div class="apps-mode" role="tablist" aria-label="Prikaz kataloga">
+        <button class="apps-mode-btn is-active" id="appsModeApps" type="button" role="tab" aria-selected="true">Aplikacije</button>
+        <button class="apps-mode-btn" id="appsModeWidgets" type="button" role="tab" aria-selected="false">Widgeti</button>
+      </div>
+    </div>
+    <div class="apps-grid" id="appsGrid"></div>
+    <div class="apps-empty" id="appsEmpty" hidden>
+      <strong>Još nema instaliranih alata</strong>
+      <span>Alati se instaliraju dodavanjem foldera u <code>apps/</code> i jedne script linije u <code>index.html</code>. Svaka epizoda serijala donosi nov alat spreman za instalaciju.</span>
+    </div>
+  </div>
+</div>
+
+<!-- "Add tab" modal (21.7.2026) - hidden by default (.modal-overlay has
+     display:none, toggled via .is-open), name input + 30-icon grid. Lives
+     outside .app/.fx-frame as its own fixed overlay so it sits above
+     everything (sidebar collapsed or not) regardless of which tab/board
+     is currently active underneath it. -->
+<div class="modal-overlay" id="addTabOverlay" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addTabTitle">
+    <h2 id="addTabTitle">Novi tab</h2>
+    <!-- Tip sekcije (23.7.2026) - vidljiv SAMO u 'add-section' modu.
+         "Prazna (custom)" je dosadašnje ponašanje: imenovana prazna
+         sekcija koju korisnik (ili Ognjen u videu) puni kroz
+         Claude/Codex, bez veze sa registrom alata. "Folder" pravi
+         quick-launch sekciju sa pločicama izabranih aplikacija.
+         Widgeti se namjerno NE dodaju odavde nego iz Aplikacije
+         panela (Widgeti prikaz) - dodavanje widgeta bira ALAT, ne ime. -->
+    <div class="modal-type-field" id="modalTypeField" hidden>
+      <div class="modal-field-label">Tip sekcije</div>
+      <div class="section-type-row" role="radiogroup" aria-label="Tip sekcije">
+        <button type="button" class="section-type-btn is-selected" data-section-type="custom" role="radio" aria-checked="true">
+          <strong>Prazna (custom)</strong>
+          <span>Sadržaj gradiš sam, npr. kroz Claude/Codex</span>
+        </button>
+        <button type="button" class="section-type-btn" data-section-type="folder" role="radio" aria-checked="false">
+          <strong>Folder</strong>
+          <span>Brzo pokretanje izabranih aplikacija</span>
+        </button>
+      </div>
+    </div>
+    <div class="modal-name-field" id="modalNameField">
+      <label class="modal-field-label" for="addTabName">Ime</label>
+      <input class="modal-input" id="addTabName" type="text" placeholder="npr. Marketing" maxlength="40" autocomplete="off">
+    </div>
+    <!-- Folder quick-pick (23.7.2026) - checkbox lista instaliranih
+         aplikacija, vidljiva samo kad je tip "folder" (i u
+         'edit-folder' modu za kasnije dopunjavanje). Prazan izbor je
+         dozvoljen - folder se može napraviti prazan i dopuniti kasnije
+         kroz meni sekcije. -->
+    <div class="modal-folder-field" id="modalFolderField" hidden>
+      <div class="modal-field-label">Aplikacije u folderu</div>
+      <div class="folder-pick" id="folderPickList"></div>
+      <p class="folder-pick-empty" id="folderPickEmpty" hidden>Nijedan alat još nije instaliran - folder možeš napraviti prazan i dopuniti ga kasnije.</p>
+    </div>
+    <!-- Hidden in 'add-section' mode (sections get a name only, no
+         icon) - see openTabModal() in app.js. Always shown for 'add'/
+         'edit' tab modes. -->
+    <div class="modal-icon-field" id="modalIconField">
+      <div class="modal-field-label">Ikonica</div>
+      <div class="icon-grid" id="addTabIconGrid"><!-- 30 icon buttons rendered by app.js --></div>
+    </div>
+    <p class="modal-help" id="modalHelp">Unesi ime i izaberi ikonicu.</p>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-ghost" id="addTabCancel" type="button">Otkaži</button>
+      <button class="modal-btn modal-btn-primary" id="addTabConfirm" type="button" disabled>Dodaj</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="moveSectionOverlay" aria-hidden="true">
+  <div class="modal modal-compact" role="dialog" aria-modal="true" aria-labelledby="moveSectionTitle">
+    <h2 id="moveSectionTitle">Premjesti sekciju</h2>
+    <label class="modal-field-label" for="moveSectionTarget">Odredišni tab</label>
+    <select class="modal-input" id="moveSectionTarget"></select>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-ghost" id="moveSectionCancel" type="button">Otkaži</button>
+      <button class="modal-btn modal-btn-primary" id="moveSectionConfirm" type="button">Premjesti</button>
+    </div>
+  </div>
+</div>
+
+<!-- Poveži alat sa sekcijom (26.7.2026) - pretvara PRAZNU custom
+     sekciju u widget instancu ISTOG alata na LICU MJESTA: isti id,
+     ista pozicija u redoslijedu, isti colSpan/rowSpan koji je Ognjen
+     već ručno podesio. Namjerno odvojeno od velikog addTab modala
+     (koji ionako služi mnogim, međusobno nepovezanim modovima) - isti
+     kompaktan, samostalan obrazac kao moveSectionOverlay iznad. -->
+<div class="modal-overlay" id="attachAppOverlay" aria-hidden="true">
+  <div class="modal modal-compact" role="dialog" aria-modal="true" aria-labelledby="attachAppTitle">
+    <h2 id="attachAppTitle">Poveži alat sa sekcijom</h2>
+    <p class="modal-help" style="margin:-6px 0 10px">Sekcija zadržava svoju poziciju i veličinu - alat se prikazuje unutar nje.</p>
+    <div class="folder-pick" id="attachAppList"></div>
+    <p class="folder-pick-empty" id="attachAppEmpty" hidden>Nijedan alat sa widget formom još nije instaliran.</p>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-ghost" id="attachAppCancel" type="button">Otkaži</button>
+      <button class="modal-btn modal-btn-primary" id="attachAppConfirm" type="button" disabled>Poveži</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirmOverlay" aria-hidden="true">
+  <div class="modal modal-compact" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
+    <h2 id="confirmTitle">Potvrdi akciju</h2>
+    <p class="confirm-message" id="confirmMessage"></p>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-ghost" id="confirmCancel" type="button">Otkaži</button>
+      <button class="modal-btn modal-btn-danger" id="confirmAccept" type="button">Potvrdi</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" aria-hidden="true">
+  <span id="toastMessage"></span>
+  <button id="toastAction" type="button" hidden>Vrati</button>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="icon-chart" viewBox="0 0 24 24"><path d="M4 20V11M12 20V4M20 20v-8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="icon-chat" viewBox="0 0 24 24"><path d="M4 5.5h16v10.5H9l-4 3.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+    <!-- Pravi brend logoi (27.7.2026, Ognjenov zahtjev - zamjena za
+         generične tabler ikone koje su ranije stajale u Claude/Codex
+         chipovima). Preuzeto iz Ignis biblioteke ikonica (bootstrap-icons
+         set - fill="currentColor" već ugrađen u path, isto se ponaša kao
+         stroke="currentColor" tabler ikonice svugdje drugo). Codex nema
+         sopstveni odvojen brend mark - koristi se OpenAI logo (Codex je
+         OpenAI-jev alat), isto kao Claude logo predstavlja Anthropic. -->
+    <symbol id="icon-brand-claude" viewBox="0 0 16 16"><path fill="currentColor" d="m3.127 10.604 3.135-1.76.053-.153-.053-.085H6.11l-.525-.032-1.791-.048-1.554-.065-1.505-.08-.38-.081L0 7.832l.036-.234.32-.214.455.04 1.009.069 1.513.105 1.097.064 1.626.17h.259l.036-.105-.089-.065-.068-.064-1.566-1.062-1.695-1.121-.887-.646-.48-.327-.243-.306-.104-.67.435-.48.585.04.15.04.593.456 1.267.981 1.654 1.218.242.202.097-.068.012-.049-.109-.181-.9-1.626-.96-1.655-.428-.686-.113-.411a2 2 0 0 1-.068-.484l.496-.674L4.446 0l.662.089.279.242.411.94.666 1.48 1.033 2.014.302.597.162.553.06.17h.105v-.097l.085-1.134.157-1.392.154-1.792.052-.504.25-.605.497-.327.387.186.319.456-.045.294-.19 1.23-.37 1.93-.243 1.29h.142l.161-.16.654-.868 1.097-1.372.484-.545.565-.601.363-.287h.686l.505.751-.226.775-.707.895-.585.759-.839 1.13-.524.904.048.072.125-.012 1.897-.403 1.024-.186 1.223-.21.553.258.06.263-.218.536-1.307.323-1.533.307-2.284.54-.028.02.032.04 1.029.098.44.024h1.077l2.005.15.525.346.315.424-.053.323-.807.411-3.631-.863-.872-.218h-.12v.073l.726.71 1.331 1.202 1.667 1.55.084.383-.214.302-.226-.032-1.464-1.101-.565-.497-1.28-1.077h-.084v.113l.295.432 1.557 2.34.08.718-.112.234-.404.141-.444-.08-.911-1.28-.94-1.44-.759-1.291-.093.053-.448 4.821-.21.246-.484.186-.403-.307-.214-.496.214-.98.258-1.28.21-1.016.19-1.263.112-.42-.008-.028-.092.012-.953 1.307-1.448 1.957-1.146 1.227-.274.109-.477-.247.045-.44.266-.39 1.586-2.018.956-1.25.617-.723-.004-.105h-.036l-4.212 2.736-.75.096-.324-.302.04-.496.154-.162 1.267-.871z"/></symbol>
+    <symbol id="icon-brand-openai" viewBox="0 0 16 16"><path fill="currentColor" d="M14.949 6.547a3.94 3.94 0 0 0-.348-3.273 4.11 4.11 0 0 0-4.4-1.934A4.1 4.1 0 0 0 8.423.2 4.15 4.15 0 0 0 6.305.086a4.1 4.1 0 0 0-1.891.948 4.04 4.04 0 0 0-1.158 1.753 4.1 4.1 0 0 0-1.563.679A4 4 0 0 0 .554 4.72a3.99 3.99 0 0 0 .502 4.731 3.94 3.94 0 0 0 .346 3.274 4.11 4.11 0 0 0 4.402 1.933c.382.425.852.764 1.377.995.526.231 1.095.35 1.67.346 1.78.002 3.358-1.132 3.901-2.804a4.1 4.1 0 0 0 1.563-.68 4 4 0 0 0 1.14-1.253 3.99 3.99 0 0 0-.506-4.716m-6.097 8.406a3.05 3.05 0 0 1-1.945-.694l.096-.054 3.23-1.838a.53.53 0 0 0 .265-.455v-4.49l1.366.778q.02.011.025.035v3.722c-.003 1.653-1.361 2.992-3.037 2.996m-6.53-2.75a2.95 2.95 0 0 1-.36-2.01l.095.057L5.29 12.09a.53.53 0 0 0 .527 0l3.949-2.246v1.555a.05.05 0 0 1-.022.041L6.473 13.3c-1.454.826-3.311.335-4.15-1.098m-.85-6.94A3.02 3.02 0 0 1 3.07 3.949v3.785a.51.51 0 0 0 .262.451l3.93 2.237-1.366.779a.05.05 0 0 1-.048 0L2.585 9.342a2.98 2.98 0 0 1-1.113-4.094zm11.216 2.571L8.747 5.576l1.362-.776a.05.05 0 0 1 .048 0l3.265 1.86a3 3 0 0 1 1.173 1.207 2.96 2.96 0 0 1-.27 3.2 3.05 3.05 0 0 1-1.36.997V8.279a.52.52 0 0 0-.276-.445m1.36-2.015-.097-.057-3.226-1.855a.53.53 0 0 0-.53 0L6.249 6.153V4.598a.04.04 0 0 1 .019-.04L9.533 2.7a3.07 3.07 0 0 1 3.257.139c.474.325.843.778 1.066 1.303.223.526.289 1.103.191 1.664zM5.503 8.575 4.139 7.8a.05.05 0 0 1-.026-.037V4.049c0-.57.166-1.127.476-1.607s.752-.864 1.275-1.105a3.08 3.08 0 0 1 3.234.41l-.096.054-3.23 1.838a.53.53 0 0 0-.265.455zm.742-1.577 1.758-1 1.762 1v2l-1.755 1-1.762-1z"/></symbol>
+    <symbol id="icon-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/><path d="M10 8.3l6 3.7-6 3.7z" fill="currentColor"/></symbol>
+    <symbol id="icon-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1" stroke="currentColor" stroke-width="1.6"/></symbol>
+    <symbol id="icon-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+    <symbol id="icon-resize" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="icon-chevron-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+
+    <!-- 30 icons for the "novi tab" icon picker (21.7.2026), plus plus/x
+         utility icons for the add-tab button and delete controls - all
+         sourced from tabler/outline (assets/icons/tabler/outline/ in the
+         Ignis repo, MIT license), copied as static files here rather than
+         referenced live, since this repo stays deliberately independent
+         of Ignis. Normalized to stroke-width 1.7 (matches icon-resize
+         above) via a wrapping <g> instead of per-path attributes - tabler
+         ships stroke-width 2 by default, and each icon file also has an
+         invisible spacer path (stroke="none" fill="none", exists only to
+         pin the 24x24 bounding box) that's stripped here since it does
+         nothing visually. -->
+    <symbol id="icon-tabler-chart-bar" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -6" /><path d="M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -10" /><path d="M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -14" /><path d="M4 20h14" /></g></symbol>
+    <symbol id="icon-tabler-users" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /><path d="M21 21v-2a4 4 0 0 0 -3 -3.85" /></g></symbol>
+    <symbol id="icon-tabler-message-circle" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1" /></g></symbol>
+    <symbol id="icon-tabler-folder" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2" /></g></symbol>
+    <symbol id="icon-tabler-file-text" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /><path d="M9 9l1 0" /><path d="M9 13l6 0" /><path d="M9 17l6 0" /></g></symbol>
+    <symbol id="icon-tabler-photo" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h.01" /><path d="M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12" /><path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" /><path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3" /></g></symbol>
+    <symbol id="icon-tabler-video" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-4" /><path d="M3 8a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2l0 -8" /></g></symbol>
+    <symbol id="icon-tabler-mail" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10" /><path d="M3 7l9 6l9 -6" /></g></symbol>
+    <symbol id="icon-tabler-bell" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /></g></symbol>
+    <symbol id="icon-tabler-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" /><path d="M21 21l-6 -6" /></g></symbol>
+    <symbol id="icon-tabler-home" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" /><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" /></g></symbol>
+    <symbol id="icon-tabler-star" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245" /></g></symbol>
+    <symbol id="icon-tabler-clock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /><path d="M12 7v5l3 3" /></g></symbol>
+    <symbol id="icon-tabler-map-pin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0" /></g></symbol>
+    <symbol id="icon-tabler-shield-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11.46 20.846a12 12 0 0 1 -7.96 -14.846a12 12 0 0 0 8.5 -3a12 12 0 0 0 8.5 3a12 12 0 0 1 -.09 7.06" /><path d="M15 19l2 2l4 -4" /></g></symbol>
+    <symbol id="icon-tabler-database" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6a8 3 0 1 0 16 0a8 3 0 1 0 -16 0" /><path d="M4 6v6a8 3 0 0 0 16 0v-6" /><path d="M4 12v6a8 3 0 0 0 16 0v-6" /></g></symbol>
+    <symbol id="icon-tabler-cloud" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.657 18c-2.572 0 -4.657 -2.007 -4.657 -4.483c0 -2.475 2.085 -4.482 4.657 -4.482c.393 -1.762 1.794 -3.2 3.675 -3.773c1.88 -.572 3.956 -.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99c1.913 0 3.464 1.56 3.464 3.486c0 1.927 -1.551 3.487 -3.465 3.487h-11.878" /></g></symbol>
+    <symbol id="icon-tabler-link" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 15l6 -6" /><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464" /><path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463" /></g></symbol>
+    <symbol id="icon-tabler-edit" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1" /><path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415" /><path d="M16 5l3 3" /></g></symbol>
+    <symbol id="icon-tabler-checklist" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.615 20h-2.615a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8" /><path d="M14 19l2 2l4 -4" /><path d="M9 8h4" /><path d="M9 12h2" /></g></symbol>
+    <symbol id="icon-tabler-alert-triangle" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0" /><path d="M12 16h.01" /></g></symbol>
+    <symbol id="icon-tabler-book" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0" /><path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0" /><path d="M3 6l0 13" /><path d="M12 6l0 13" /><path d="M21 6l0 13" /></g></symbol>
+    <symbol id="icon-tabler-rocket" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13a8 8 0 0 1 7 7a6 6 0 0 0 3 -5a9 9 0 0 0 6 -8a3 3 0 0 0 -3 -3a9 9 0 0 0 -8 6a6 6 0 0 0 -5 3" /><path d="M7 14a6 6 0 0 0 -3 6a6 6 0 0 0 6 -3" /><path d="M14 9a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /></g></symbol>
+    <symbol id="icon-tabler-target" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M7 12a5 5 0 1 0 10 0a5 5 0 1 0 -10 0" /><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /></g></symbol>
+    <symbol id="icon-tabler-bulb" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h1m8 -9v1m8 8h1m-15.4 -6.4l.7 .7m12.1 -.7l-.7 .7" /><path d="M9 16a5 5 0 1 1 6 0a3.5 3.5 0 0 0 -1 3a2 2 0 0 1 -4 0a3.5 3.5 0 0 0 -1 -3" /><path d="M9.7 17l4.6 0" /></g></symbol>
+    <symbol id="icon-tabler-tool" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10h3v-3l-3.5 -3.5a6 6 0 0 1 8 8l6 6a2 2 0 0 1 -3 3l-6 -6a6 6 0 0 1 -8 -8l3.5 3.5" /></g></symbol>
+    <symbol id="icon-tabler-credit-card" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3l0 -8" /><path d="M3 10l18 0" /><path d="M7 15l.01 0" /><path d="M11 15l2 0" /></g></symbol>
+    <symbol id="icon-tabler-calendar-event" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -12" /><path d="M16 3l0 4" /><path d="M8 3l0 4" /><path d="M4 11l16 0" /><path d="M8 15h2v2h-2l0 -2" /></g></symbol>
+    <symbol id="icon-tabler-settings" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></g></symbol>
+    <symbol id="icon-tabler-layout-grid" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4" /><path d="M14 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4" /><path d="M4 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4" /><path d="M14 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4" /></g></symbol>
+    <symbol id="icon-tabler-plus" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l0 14" /><path d="M5 12l14 0" /></g></symbol>
+    <symbol id="icon-tabler-x" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12" /><path d="M6 6l12 12" /></g></symbol>
+  </defs>
+</svg>
+
+<script src="vendor/sortable.min.js"></script>
+<script src="apps-core.js?v=2"></script>
+<!-- ===================== APLIKACIJE (alati) =====================
+     Svaki instaliran alat = jedan folder u apps/ + JEDNA script
+     linija ovdje, unutar ovog bloka. Redoslijed nije bitan. Alat se
+     uklanja brisanjem svoje linije (+ foldera). Pun kontrakt i
+     instalacioni prompt za Claude/Codex: APPS_AND_WIDGETS.md. -->
+<!-- =================== KRAJ APLIKACIJA ========================== -->
+<script src="app.js?v=58"></script>
+</body>
+</html>
