@@ -124,7 +124,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if not self._host_ok():
             self.send_json(403, {'error': 'nedozvoljen host'})
             return
-        if urlsplit(self.path).path != '/api/state':
+        path = urlsplit(self.path).path
+        if path == '/api/instance':
+            # 28.7.2026 - koristi ga is_dashboard_already_running() da
+            # razlikuje "ovaj isti folder je već pokrenut na ovom portu"
+            # od "neki DRUGI dashboard folder slučajno sjedi na ovom
+            # portu" - title-tag string je isti za sve foldere (svi se
+            # zovu "AI Zdravo Dashboard"), pa sam po sebi ne dokazuje
+            # da je riječ o istoj instanci.
+            self.send_json(200, {'base_dir': str(BASE_DIR.resolve())})
+            return
+        if path != '/api/state':
             return super().do_GET()
 
         if not STATE_FILE.exists():
@@ -484,12 +494,18 @@ def stop_running():
 
 
 def is_dashboard_already_running(port):
-    """Provjerava da li NEŠTO već odgovara na ovom portu i da li je to
-    VJEROVATNO baš ovaj dashboard (a ne neka druga app koja slučajno
-    sjedi na istom portu). Traži title-tag string iz index.html-a."""
+    """Provjerava da li je BAŠ OVAJ FOLDER (ne neki drugi dashboard folder,
+    ni neka nepovezana app) već pokrenut na ovom portu. Prije 28.7.2026
+    ovo je gledalo samo da li title-tag sadrži 'AI Zdravo Dashboard' -
+    pošto svi dashboard folderi (lična kopija, dev, video serijal, itd.)
+    dijele isti naslov, dvije RAZLIČITE instance na istom portu bi se
+    lažno prepoznale kao 'ista', i druga bi tiho otvorila pogrešan folder
+    u browseru umjesto da digne sopstveni server na sljedećem portu.
+    Sad se poredi stvaran apsolutni BASE_DIR preko /api/instance rute."""
     try:
-        with urllib.request.urlopen(f'http://127.0.0.1:{port}/', timeout=0.5) as resp:
-            return 'AI Zdravo Dashboard' in resp.read(2048).decode('utf-8', errors='ignore')
+        with urllib.request.urlopen(f'http://127.0.0.1:{port}/api/instance', timeout=0.5) as resp:
+            data = json.loads(resp.read(2048).decode('utf-8', errors='ignore'))
+        return data.get('base_dir') == str(BASE_DIR.resolve())
     except Exception:
         return False
 

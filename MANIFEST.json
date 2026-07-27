@@ -3,12 +3,12 @@
   "app.js": "e7884481eafa3971cab3af72695a6f306b47aaeca65e38737dea89faffc6d4ea",
   "apps-core.js": "8f9e1a1c4ddc9dec9532a0994bf117c8263317f1408d50bdc404d7f727d9c3ad",
   "style.css": "62c8c00cde6d79f05e9de54aa509195eef089fa5e21f3cbe10d0f7c2a3a0e933",
-  "server.py": "7ca1d358b92dbd0fbe66bab0eaf28224cd12171a47f2f4a700b565adc2c44c8f",
+  "server.py": "f8aa76a579ebb8e4fcec9fc7b2fa8ce7bf320dcecac9ab8e7b038e9456cd8613",
   "APPS_AND_WIDGETS.md": "0d9e7056eaf0f06872b0c0176be616899e479dd614128a2274027eaaded7126b",
   "CLAUDE.md": "1c3f5fe56e1caa027ff701c19feba75b65fddc9b6d7e39f41c58caea25b6e145",
   "AGENTS.md": "1c3f5fe56e1caa027ff701c19feba75b65fddc9b6d7e39f41c58caea25b6e145",
   "README.md": "1523b2177c62af2f4d12c30ce26f5f53b50f02dcb1d56dcc7d095a539f352ae4",
-  "VERSION": "9fd28642d3aca191e5c7fc2383cfd6fabb2aac8743f029dabb8989ac584e31bc",
+  "VERSION": "f5e5c9534532840fcd45bb002e69ed85c61dba2753450e26b448b7df1481e24d",
   "vendor/sortable.min.js": "8a9889aecc2f011e15031fed87eeb35ac75e62655a7b4889ba247ee8ea872474",
   "assets/logo.png": "aadcbf89465643ccca5fad35e7666fc9f5c9af2600516f09097c6f68395e4dfb",
   "start-mac.command": "c1e04baac12f066b1bf764f5c94159736c76b12ac208f8ce673a9c3b684cf894",
@@ -20,5 +20,6 @@
   "uninstall-autostart-mac.command": "7a961c4cca6022c1e8bc1740cbd1409e1d1f658149ad12a81c7a6dbeaedfe6ac",
   "uninstall-autostart-windows.bat": "25c306abe726ebc80711d4cf8db2bc55abd7b9ebb901d402277a94cb641e3aec",
   ".claude/skills/install-app/SKILL.md": "a3a119bc021e50834d4780c066eb99b6004271e7334c3f3fd015322682435d07",
-  ".claude/skills/update-dashboard/SKILL.md": "1a672a9b363ff1cda34d83c8147e4088bca282155d598f9c52e994d867f16bbf"
+  ".claude/skills/update-dashboard/SKILL.md": "71c3873ea1505040c2d152e278e4b8a34172a54a72fbfe747600e730ae35fe50",
+  "tools/dashboard_updater.py": "95f714966c07084d05968ae39b2925fec9ce28373d1426cddae4ef92d2505359"
 }
