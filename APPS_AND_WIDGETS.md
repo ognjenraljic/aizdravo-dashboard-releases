@@ -75,7 +75,7 @@ ctx.toast('Poruka')       // dashboard toast
 
 ### Stilovi alata
 
-Alat nosi svoj CSS sam — injektuje `<style id="<app-id>-styles">` jednom iz svog `app.js` (vidi `apps/quick-notes/app.js` kao šablon). Sve klase prefiksuj po alatu (`qn-` za quick-notes). Boje uvijek preko dashboard varijabli (`var(--accent)`, `var(--border)`, `var(--text)`...) — tako alat automatski prati svih 6 tema + custom temu.
+Alat nosi svoj CSS sam — injektuje `<style id="<app-id>-styles">` jednom iz svog `app.js` (jednom na vrhu funkcije koja ga registruje, sa provjerom `if (!document.getElementById(...))` da se ne duplira na drugi render). Sve klase prefiksuj po alatu (npr. `vk-` za video-kompresor). Boje uvijek preko dashboard varijabli (`var(--accent)`, `var(--border)`, `var(--text)`...) — tako alat automatski prati svih 6 tema + custom temu.
 
 ### Komunikacija među alatima (event bus)
 
@@ -112,10 +112,10 @@ Widget sekcija čiji alat više nije prisutan (obrisana script linija) prikazuje
 
 ## Uklanjanje alata
 
-Dva nivoa:
+1. **Katalog (dugme "Alati" dole desno) → hover na alat → × → potvrdi** — TRAJNO briše `apps/<app-id>/` folder sa diska, uklanja script liniju iz `index.html`, i odjavljuje alat iz živog registra istog trena (bez reloada). Nije reverzibilno kroz UI — jedini povratak je ponovna instalacija (isti alat opet u `apps/`).
+2. **Fizičko uklanjanje** — isti efekat ručno: obriši `apps/<app-id>/` folder i njegovu script liniju iz `index.html`.
 
-1. **Podešavanja → Aplikacije i widgeti → Ukloni** — briše sve widget instance sa svih tabova, pločice iz foldera i zatvara app tab (uz potvrdu koja kaže tačno šta nestaje). Podaci alata (`ctx.storage`) ostaju za slučaj povratka; "Vrati" ga ponovo aktivira. Ovo je jedino što se radi iz browsera.
-2. **Fizičko uklanjanje** — obriši `apps/<app-id>/` folder i njegovu script liniju iz `index.html`.
+Widget instance ostavljene na boardu poslije brisanja prikazuju "Alat nije dostupan" (vidi gore) dok se alat eventualno ne instalira ponovo.
 
 ## Instalacioni prompt (kopiraj u opis videa)
 
@@ -131,8 +131,8 @@ U ovom folderu je AI Zdravo Dashboard. Instaliraj alat "<APP-ID>":
 2. U index.html, unutar bloka "APLIKACIJE (alati)", dodaj liniju:
    <script src="apps/<APP-ID>/app.js?v=1"></script>
 3. Ne diraj ništa drugo. Pravila i kontrakt su u APPS_AND_WIDGETS.md.
-4. Osvježi dashboard u browseru i potvrdi da se alat vidi u
-   Aplikacije panelu (narandžasto + dugme dole desno -> Aplikacije).
+4. Osvježi dashboard u browseru i potvrdi da se alat vidi u katalogu
+   (dugme dole desno -> Alati).
 ```
 
 Za alat koji se distribuira kao čist kod (bez linka), Ognjen u objavu stavi kod + isti prompt sa opcijom iz zagrade.
@@ -152,7 +152,7 @@ verziju:
    (npr. ?v=1 -> ?v=2) da browser ne kešira staru verziju.
 3. Ne diraj ništa drugo - podaci alata (ctx.storage) ostaju i važe za
    novu verziju.
-4. Osvježi dashboard i potvrdi da Podešavanja -> Aplikacije i widgeti
+4. Osvježi dashboard i potvrdi da katalog (dugme dole desno -> Alati)
    prikazuje novu verziju alata.
 ```
 
@@ -160,12 +160,12 @@ Podaci alata prežive ažuriranje automatski (žive pod `aizdravo:app:<id>`, ne 
 
 ## Kako korisnik koristi alat
 
-- **+ dugme (dole desno) → Aplikacije** — katalog sa pretragom. "Aplikacije" prikaz otvara alat kao tab; "Widgeti" prikaz dodaje widget na trenutno aktivan tab (izbor veličine ako alat nudi više).
+- **+ dugme (dole desno) → Alati** — otvara katalog sa pretragom, default prikaz "Aplikacije". "Aplikacije" prikaz otvara alat kao tab; "Widgeti" prikaz dodaje widget na trenutno aktivan tab (izbor veličine ako alat nudi više).
 - **Nova sekcija → tip "Folder"** — sekcija sa quick-launch pločicama izabranih aplikacija; lista se kasnije mijenja kroz meni sekcije ("Aplikacije foldera").
 - **Nova sekcija → tip "Prazna (custom)"** — imenovana prazna sekcija BEZ veze sa registrom, za sadržaj koji korisnik gradi direktno kroz Claude/Codex.
 - **Prazna sekcija → njen meni (•••) → "Poveži alat..."** — pretvara TU POSTOJEĆU sekciju u izabrani alat NA LICU MJESTA: ista pozicija, ista veličina (koju je korisnik već ručno podesio) - umjesto dodavanja nove, odvojene kartice iz kataloga na alat-ov default preset. Ovo je standardni put za instalaciju alata iz epizode: prvo instalacioni prompt (ispod) u folderu dashboarda doda alat u apps/ + registruje ga u index.html, alat se odmah pojavi u katalogu, pa se veže na već pripremljenu/imenovanu/podešenu sekciju kroz ovu opciju. Dostupno samo za "Prazna (custom)" sekcije koje još nisu povezane ni sa jednim alatom.
-- **Podešavanja → Aplikacije i widgeti** — pregled, uklanjanje, vraćanje.
+- **Katalog → hover na alat → ×** — trajno brisanje (vidi "Uklanjanje alata" iznad).
 
 ## Referentni primjer
 
-`apps/quick-notes/` (Brze bilješke) je živi šablon: manifest, obje forme, dijeljen `ctx.storage` između widgeta i aplikacije, sopstveni stilovi, cleanup funkcija. Nov alat najlakše nastaje kopiranjem tog fajla.
+Dashboard kreće prazan — nema instaliranog alata na disku da posluži kao živ šablon. Manifest primjer iznad ("Manifest (registerApp)") je namjerno potpun i samodovoljan: pokriva obje forme, `ctx` API, event bus i pravila stilova — dovoljan je kao polazna tačka za nov alat bez potrebe da se gleda tuđi kod. Prvi alat koji se instalira (bilo koji, prompt ili gotov folder) postaje živ primjer za sve sljedeće.

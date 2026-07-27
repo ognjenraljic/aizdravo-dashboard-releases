@@ -72,4 +72,4 @@ Ako nešto ne prolazi, ispravi sam ako je očigledno (npr. icon koji ne postoji 
 
 ## Reference
 
-Pun kontrakt (manifest oblik, `ctx` API, pravila autora alata): `APPS_AND_WIDGETS.md`. Živi šablon bez servera: `apps/quick-notes/app.js`. Živi šablon SA sopstvenim server endpointom (referenca za alat kome treba ffmpeg ili slična server-side obrada): `apps/video-kompresor/app.js` + odgovarajući `handle_video_compress` blok u `server.py`.
+Pun kontrakt (manifest oblik, `ctx` API, pravila autora alata, kompletan primjer): `APPS_AND_WIDGETS.md`. Dashboard kreće prazan - nema instaliranog alata na disku, pa nema živog fajl-šablona za kopiranje; oslanjaj se na primjer iz `APPS_AND_WIDGETS.md`. Za alat kome treba server-side obrada (ffmpeg i sl.): `server.py` već sadrži `handle_video_compress` kao živu referencu tog obrasca (`do_POST` dispatch preko `path == '/api/<id>/...'`), čak i ako sam `apps/video-kompresor/` folder trenutno nije instaliran.
