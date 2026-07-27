@@ -32,6 +32,7 @@ CORE_FILES = [
     '.claude/skills/install-app/SKILL.md',
     '.claude/skills/update-dashboard/SKILL.md',
     'tools/dashboard_updater.py',
+    'MANIFEST.json',
 ]
 
 # Nikad ne ulaze u CORE_FILES - ovdje samo radi dokumentacije/testova,
@@ -136,11 +137,21 @@ def backup_folder(current_dir):
 
 def fetch_remote_staging(base_url, staging_dir):
     """Skida MANIFEST.json + svaki core fajl sa raw GitHub URL-a u
-    staging_dir. Vraća učitan manifest (dict) za Korak 3 hash provjeru."""
+    staging_dir. Vraća učitan manifest (dict) za Korak 3 hash provjeru.
+
+    MANIFEST.json se (28.7.2026) piše u staging_dir kao SVOJ SOPSTVENI
+    fajl - prije ovog fixa je samo parsiran u memoriji i nikad primijenjen
+    na disk, pa je lokalni MANIFEST.json ostajao trajno zastario (i dalje
+    prijavljivao hash-eve STARE verzije) poslije svakog update-a, iako je
+    svaki core fajl bio ispravno ažuriran na disku. Ne mora biti hash-
+    verifikovan sam protiv sebe (ista logika kao VERSION - fetch preko
+    HTTPS raw GitHub URL-a se vjeruje kao izvor istine)."""
     staging_dir.mkdir(parents=True, exist_ok=True)
     manifest_url = base_url.rstrip('/') + '/MANIFEST.json'
     with urllib.request.urlopen(manifest_url, timeout=10) as resp:
-        manifest = json.loads(resp.read().decode('utf-8'))
+        manifest_bytes = resp.read()
+    manifest = json.loads(manifest_bytes.decode('utf-8'))
+    (staging_dir / 'MANIFEST.json').write_bytes(manifest_bytes)
     for rel in manifest:
         dest = staging_dir / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -217,17 +228,18 @@ def main():
     args = parser.parse_args()
 
     current_dir = Path(args.current_dir)
+    owns_staging_dir = False
 
     if args.source_dir:
         staging_dir = Path(args.source_dir)
         manifest_path = staging_dir / 'MANIFEST.json'
         manifest = json.loads(manifest_path.read_text(encoding='utf-8')) if manifest_path.exists() else None
     elif args.source_url:
-        staging_parent = current_dir.parent / '.aizdravo-update-staging'
-        if staging_parent.exists():
-            shutil.rmtree(staging_parent)
-        manifest = fetch_remote_staging(args.source_url, staging_parent)
-        staging_dir = staging_parent
+        staging_dir = current_dir.parent / '.aizdravo-update-staging'
+        owns_staging_dir = True
+        if staging_dir.exists():
+            shutil.rmtree(staging_dir)
+        manifest = fetch_remote_staging(args.source_url, staging_dir)
     else:
         print('Treba --source-url ili --source-dir.', file=sys.stderr)
         sys.exit(1)
@@ -237,6 +249,12 @@ def main():
     except UpdateError as exc:
         print(f'Update prekinut: {exc}', file=sys.stderr)
         sys.exit(1)
+    finally:
+        # staging_dir smo mi napravili (--source-url slučaj) - obriši ga bez
+        # obzira na ishod. Ako je korisnik dao --source-dir, to je NJEGOV
+        # folder, ne diramo ga.
+        if owns_staging_dir and staging_dir.exists():
+            shutil.rmtree(staging_dir)
 
     print(json.dumps(report, indent=2, ensure_ascii=False))
 

@@ -119,6 +119,26 @@ class DashboardUpdaterTest(unittest.TestCase):
             (current_dir / 'index.html').read_text(encoding='utf-8'),
         )
 
+    def test_stale_manifest_json_is_refreshed_on_disk(self):
+        # 28.7.2026 fix: MANIFEST.json je ranije bio SAMO parsiran u
+        # memoriju za hash provjeru, nikad primijenjen na disk - lokalna
+        # kopija je ostajala trajno zastarjela poslije svakog update-a.
+        current_dir = self.tmp / 'current'
+        staging_dir = self.tmp / 'staging'
+        _make_fixture_from_repo(current_dir)
+        _make_fixture_from_repo(staging_dir)
+        self._write_state(current_dir, {})
+
+        (current_dir / 'MANIFEST.json').write_text('{"stara": "verzija"}', encoding='utf-8')
+        (staging_dir / 'MANIFEST.json').write_text('{"nova": "verzija"}', encoding='utf-8')
+
+        du.apply_update(current_dir, staging_dir)
+
+        self.assertEqual(
+            (current_dir / 'MANIFEST.json').read_text(encoding='utf-8'),
+            '{"nova": "verzija"}',
+        )
+
     def test_never_touch_paths_are_not_in_core_files(self):
         overlap = du.NEVER_TOUCH & set(du.CORE_FILES)
         self.assertEqual(overlap, set(), 'NEVER_TOUCH putanje se ne smiju naći u CORE_FILES')
