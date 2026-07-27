@@ -51,6 +51,10 @@
     if (typeof manifest.description !== 'string' || !manifest.description.trim()) return fail(id, 'description je obavezan');
     if (typeof manifest.version !== 'string' || !manifest.version.trim()) return fail(id, 'version je obavezan (npr. "1.0.0")');
     if (typeof manifest.icon !== 'string' || !manifest.icon.trim()) return fail(id, 'icon je obavezan (ime tabler simbola, npr. "video")');
+    // Ikonica se u host-u (app.js) ubacuje u innerHTML kao dio href="#icon-tabler-<ovo>"
+    // (27.7.2026, Codex bezbjednosni audit) - bez ovog charset filtera, tool sa
+    // zlonamjernim/pokvarenim icon poljem bi mogao ubaciti proizvoljan HTML/JS.
+    if (!ID_RE.test(manifest.icon.trim())) return fail(id, 'icon mora biti kebab-case ime (samo a-z, 0-9, crtica) - "' + manifest.icon + '" nije bezbjedno');
     // 23.7.2026: forme su OPCIONE pojedinačno - alat može biti samo
     // widget (npr. sat) ili samo aplikacija (npr. složen editor bez
     // smislene mini forme). Bar JEDNA mora postojati.

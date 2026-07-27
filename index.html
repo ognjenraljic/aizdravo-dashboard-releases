@@ -250,7 +250,7 @@
               <div class="wm-widget-preview">
                 <span class="wm-widget-icon"><svg><use href="#icon-tabler-cloud"></use></svg></span>
                 <span class="wm-widget-temp">21°</span>
-                <span class="wm-widget-place">Banja Luka</span>
+                <span class="wm-widget-place">Tvoj grad</span>
                 <div class="wm-widget-days">
                   <span>Sri<b>19°</b></span>
                   <span>Čet<b>22°</b></span>
@@ -322,7 +322,7 @@
                 <div class="wm-opentab-scene wm-opentab-scene--app">
                   <span class="wm-widget-icon"><svg><use href="#icon-tabler-cloud"></use></svg></span>
                   <span class="wm-widget-temp">21°</span>
-                  <span class="wm-widget-place">Banja Luka</span>
+                  <span class="wm-widget-place">Tvoj grad</span>
                   <div class="wm-widget-days">
                     <span>Sri<b>19°</b></span>
                     <span>Čet<b>22°</b></span>
@@ -602,7 +602,7 @@
     <div class="apps-grid" id="appsGrid"></div>
     <div class="apps-empty" id="appsEmpty" hidden>
       <strong>Još nema instaliranih alata</strong>
-      <span>Alati se instaliraju dodavanjem foldera u <code>apps/</code> i jedne script linije u <code>index.html</code>. Svaka epizoda serijala donosi nov alat spreman za instalaciju.</span>
+      <span>Opiši Claude-u/Codex-u šta ti treba - sam napiše alat i registruje ga. Ili dodaj gotov folder u <code>apps/</code> i jednu script liniju u <code>index.html</code>. Svaka epizoda serijala donosi nov alat spreman za instalaciju.</span>
     </div>
   </div>
 </div>
@@ -715,9 +715,8 @@
   <defs>
     <symbol id="icon-chart" viewBox="0 0 24 24"><path d="M4 20V11M12 20V4M20 20v-8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="icon-chat" viewBox="0 0 24 24"><path d="M4 5.5h16v10.5H9l-4 3.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
-    <!-- Pravi brend logoi (27.7.2026, Ognjenov zahtjev - zamjena za
-         generične tabler ikone koje su ranije stajale u Claude/Codex
-         chipovima). Preuzeto iz Ignis biblioteke ikonica (bootstrap-icons
+    <!-- Pravi brend logoi (27.7.2026) - zamjena za generične tabler ikone
+         koje su ranije stajale u Claude/Codex chipovima (bootstrap-icons
          set - fill="currentColor" već ugrađen u path, isto se ponaša kao
          stroke="currentColor" tabler ikonice svugdje drugo). Codex nema
          sopstveni odvojen brend mark - koristi se OpenAI logo (Codex je
@@ -732,11 +731,11 @@
 
     <!-- 30 icons for the "novi tab" icon picker (21.7.2026), plus plus/x
          utility icons for the add-tab button and delete controls - all
-         sourced from tabler/outline (assets/icons/tabler/outline/ in the
-         Ignis repo, MIT license), copied as static files here rather than
-         referenced live, since this repo stays deliberately independent
-         of Ignis. Normalized to stroke-width 1.7 (matches icon-resize
-         above) via a wrapping <g> instead of per-path attributes - tabler
+         sourced from tabler/outline (MIT license), copied as static files
+         here rather than referenced live, since this repo stays
+         deliberately independent/self-contained. Normalized to
+         stroke-width 1.7 (matches icon-resize above) via a wrapping <g>
+         instead of per-path attributes - tabler
          ships stroke-width 2 by default, and each icon file also has an
          invisible spacer path (stroke="none" fill="none", exists only to
          pin the 24x24 bounding box) that's stripped here since it does

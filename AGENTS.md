@@ -11,20 +11,23 @@ Provjeri da li u root-u ovog foldera postoji fajl `.aizdravo-welcomed`:
   - Odmah nastavi (u istoj poruci ili odmah zatim, bez čekanja da nešto pitaju) na Korak 2 (provjeri Python) i Korak 3 (pokreni dashboard).
   - Ukratko objasni DVA načina da se doda alat: (1) **prompt** — opišu šta žele, Claude/Codex napiše kod i sam ga registruje; (2) **gotov folder** — prevuku folder u `apps/`, kažu "učitaj ga", automatski se registruje. Naglasi da je JEDAN isti folder dovoljan i za "aplikaciju" i za "widget" formu ako alat ima obje — nema odvojenih foldera po formi, jedan manifest pokriva oboje (pun kontrakt: `APPS_AND_WIDGETS.md`).
   - Naglasi da je ovo od sad NJIHOV operativni sistem — grade alate koji im pomažu u svakodnevnom radu, mijenjaju temu/izgled kako im odgovara.
-  - Poslije ovog pozdrava, ODMAH sačuvaj prazan `.aizdravo-welcomed` fajl u root ovog foldera (`touch .aizdravo-welcomed` ili ekvivalent) — da se pozdrav ne ponovi u budućim sesijama.
+  - **NE piši `.aizdravo-welcomed` fajl još** — tek na kraju Koraka 3, kad je dashboard STVARNO potvrđeno pokrenut (vidi tamo). Ako se ovdje napiše odmah i nešto poslije zapne (Python nedostaje i korisnik odustane, server ne uspije da se pokrene), sljedeća sesija bi preskočila pozdrav iako korisnik nikad nije dobio radan dashboard.
 - **Postoji** — preskoči ovaj korak potpuno, idi direktno na Korak 2.
 
 ## 2. Provjeri Python PRIJE pokretanja (auto-instaliraj uz potvrdu, ili daj jasna uputstva)
 
-`start-mac.command`/`start-windows.bat` (Korak 3 ispod) zovu `python3` — ako ga korisnik nema instaliranog (čest slučaj, pogotovo na Windowsu i na novijem macOS-u bez Xcode alata), pokretanje padne sa kriptičnom greškom umjesto da se dashboard otvori. Provjeri OVO prvo, svaki put kad prvi put uđeš u ovaj folder ili kad korisnik javi da dashboard "ne radi"/"ne može da se pokrene":
+`start-mac.command` zove `python3`; `start-windows.bat` prvo proba `python`, pa `python3` (drugačiji redoslijed po OS-u — vidi taj fajl). Ako korisnik nema Python instaliran (čest slučaj, pogotovo na Windowsu i na novijem macOS-u bez Xcode alata), pokretanje padne sa kriptičnom greškom umjesto da se dashboard otvori. Provjeri OVO prvo, svaki put kad prvi put uđeš u ovaj folder ili kad korisnik javi da dashboard "ne radi"/"ne može da se pokrene":
 
-1. **Provjeri**: `python3 --version`. Ako vrati verziju 3.x — ništa više ne treba, idi na Korak 3.
+1. **Provjeri, redoslijedom koji odgovara OS-u**:
+   - **macOS/Linux**: `python3 --version`.
+   - **Windows**: prvo `py -3 --version` (najpouzdaniji način da se izbjegne Microsoft Store alias koji NIJE stvarna instalacija), pa `python --version`, pa `python3 --version` — isti redoslijed kao `start-windows.bat`. Ako `python --version` "uspije" ali ispiše ništa ili otvori Microsoft Store, tretiraj kao da Python nije instaliran.
+   Ako bilo koja od ovih vrati verziju 3.x — ništa više ne treba, idi na Korak 3.
 2. **Ako nedostaje** — prvo objasni korisniku šta nedostaje i šta bi tačno pokrenuo, PA TRAŽI POTVRDU prije nego išta instaliraš (instalacija softvera na tuđoj mašini nije "obična" akcija, isti princip kao Korak 4 ispod):
    - **macOS sa Homebrew-om** (`which brew` uspije): predloži `brew install python3` — ne traži sudo/lozinku, sigurno za pokrenuti nakon potvrde.
    - **macOS bez Homebrew-a**: predloži `xcode-select --install` (otvara Appleov GUI installer za Command Line Tools, koji uključuje python3) — ovo TRAŽI da korisnik sam klikne kroz sistemski dijalog, ne može se do kraja automatizovati; reci mu to unaprijed.
    - **Windows sa `winget`** (`winget --version` uspije): predloži `winget install Python.Python.3.12` — obično ne traži admin prava.
-   - **Windows bez winget-a, ili korisnik odbije auto-instalaciju**: daj direktan link `https://www.python.org/downloads/` i jedno upozorenje - na Windowsu OBAVEZNO čekirati "Add python.exe to PATH" na prvom ekranu instalera, inače `python3`/`python` komanda i dalje neće raditi ni poslije instalacije.
-3. **Poslije instalacije** (auto ili ručne) - ponovo provjeri `python3 --version` prije nego nastaviš na Korak 3. Ako i dalje ne radi (npr. terminal treba restart da pokupi novi PATH), reci korisniku da zatvori i ponovo otvori terminal/Claude Code sesiju pa pokuša ponovo.
+   - **Windows bez winget-a, ili korisnik odbije auto-instalaciju**: daj direktan link `https://www.python.org/downloads/` i jedno upozorenje - na Windowsu OBAVEZNO čekirati "Add python.exe to PATH" na prvom ekranu instalera, inače ni `python`/`python3`/`py` komande neće raditi ni poslije instalacije.
+3. **Poslije instalacije** (auto ili ručne) - ponovo provjeri (istim OS-specifičnim redoslijedom) prije nego nastaviš na Korak 3. Ako i dalje ne radi (npr. terminal treba restart da pokupi novi PATH), reci korisniku da zatvori i ponovo otvori terminal/Claude Code sesiju pa pokuša ponovo.
 
 ## 3. Pokreni dashboard (uvijek, automatski, bez pitanja)
 
@@ -36,6 +39,8 @@ cd "$(pwd)" && ./start-mac.command   # Mac
 ili na Windowsu `start-windows.bat`. Ovo je bezbjedno pokrenuti bilo kad — skripta sama detektuje da li je dashboard već pokrenut i neće dići drugi proces. Server ostaje živ u pozadini i poslije zatvaranja terminala (detached od 24.7.2026), pa se ovo ne mora ponavljati unutar iste sesije/dana, ali provjeri svaki put kad korisnik kaže da dashboard "ne radi" ili "ne može da se poveže" — najčešći uzrok je da server nije pokrenut (npr. poslije restarta računara).
 
 Poslije uspješnog starta, reci korisniku da otvori `http://localhost:8100` i sačuva ga u Bookmarks (Cmd+D / Ctrl+D) — dvoklik na taj bookmark će odsad otvarati dashboard.
+
+Tek OVDJE, kad je `curl` na `http://localhost:8100/` stvarno vratio 200 (ne prije) - ako `.aizdravo-welcomed` iz Koraka 1 još ne postoji, sačuvaj ga sad (`touch .aizdravo-welcomed` ili ekvivalent). Ovo potvrđuje da je korisnik zaista dobio radan dashboard prije nego se pozdrav označi kao odrađen.
 
 ## 4. Auto-start pri prijavi na računar (ponudi, ne pokreći bez potvrde)
 

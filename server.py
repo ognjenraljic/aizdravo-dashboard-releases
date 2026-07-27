@@ -28,10 +28,8 @@ PID_FILE = BASE_DIR / 'dashboard.pid'
 # Build-time-only error log (21.7.2026) - client-side catcher in
 # index.html POSTs here best-effort, appends one JSON object per line.
 # Not part of the shipped dashboard's actual functionality - a dev-time
-# safety net so Ognjen/Iskra can catch runtime errors while building,
-# before this gets handed to other people to download. Gitignored, lives
-# only in this repo (no Ignis registry involved, per this repo's
-# deliberate separation from the Ignis system).
+# safety net to catch runtime errors while building, before this gets
+# handed to other people to download. Gitignored, lives only in this repo.
 ERROR_LOG = BASE_DIR / 'errors.jsonl'
 STATE_FILE = BASE_DIR / 'dashboard-state.json'
 STATE_TMP_FILE = BASE_DIR / 'dashboard-state.json.tmp'
@@ -62,6 +60,30 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def log_message(self, *args):
         pass
+
+    def _host_ok(self):
+        # DNS-rebinding/CSRF zaštita (27.7.2026, Codex bezbjednosni audit) - server
+        # sluša samo na 127.0.0.1, ali bilo koja stranica koju korisnik otvori u
+        # ISTOM browseru može poslati fetch/XHR na http://localhost:8100/api/...
+        # (npr. da obriše instaliran alat preko /api/apps/delete). Bez provjere
+        # Host headera, taj zahtjev bi tiho prošao. Standardan _host_ok()
+        # obrazac za lokalne HTTP servere koji izlažu destruktivne rute.
+        host = (self.headers.get('Host') or '').split(':')[0].lower()
+        return host in ('localhost', '127.0.0.1')
+
+    def translate_path(self, path):
+        # Path-traversal/symlink-escape zaštita (27.7.2026, Codex bezbjednosni
+        # audit) - SimpleHTTPRequestHandler prati simlinkove bez provjere. Alat
+        # čiji apps/<id>/ folder (ili fajl unutra) simlinkuje na nešto van ovog
+        # dashboarda bi inače bio serviran preko HTTP-a. resolve() prati simlink
+        # do STVARNE putanje; relative_to baca ValueError ako je van BASE_DIR.
+        translated = super().translate_path(path)
+        try:
+            resolved = Path(translated).resolve()
+            resolved.relative_to(BASE_DIR.resolve())
+        except (ValueError, OSError):
+            return str(BASE_DIR.resolve() / '__blocked_path__')
+        return str(resolved)
 
     def send_json(self, status, payload):
         body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
@@ -99,6 +121,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         STATE_TMP_FILE.replace(STATE_FILE)
 
     def do_GET(self):
+        if not self._host_ok():
+            self.send_json(403, {'error': 'nedozvoljen host'})
+            return
         if urlsplit(self.path).path != '/api/state':
             return super().do_GET()
 
@@ -122,6 +147,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_json(500, {'error': 'state_read_failed', 'detail': str(exc)})
 
     def do_PUT(self):
+        if not self._host_ok():
+            self.send_json(403, {'error': 'nedozvoljen host'})
+            return
         if urlsplit(self.path).path != '/api/state':
             self.send_json(404, {'error': 'not_found'})
             return
@@ -143,6 +171,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_json(500, {'error': 'state_write_failed', 'detail': str(exc)})
 
     def do_PATCH(self):
+        if not self._host_ok():
+            self.send_json(403, {'error': 'nedozvoljen host'})
+            return
         if urlsplit(self.path).path != '/api/state':
             self.send_json(404, {'error': 'not_found'})
             return
@@ -181,6 +212,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_json(500, {'error': 'state_patch_failed', 'detail': str(exc)})
 
     def do_POST(self):
+        if not self._host_ok():
+            self.send_json(403, {'error': 'nedozvoljen host'})
+            return
         path = urlsplit(self.path).path
         if path == '/api/log-error':
             self.handle_log_error()
@@ -290,13 +324,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         except OSError:
             pass
 
-        output_name = f'{stem}-kompresovano.mp4'
-        output_path = desktop / output_name
-        counter = 2
-        while output_path.exists():
-            output_name = f'{stem}-kompresovano-{counter}.mp4'
-            output_path = desktop / output_name
-            counter += 1
+        # 27.7.2026 (Codex QA) - ffmpeg piše DIREKTNO u jedinstven privremen
+        # fajl (isti pid+thread-id obrazac kao tmp_input), ne u konačno
+        # Desktop ime. Stari kod je birao Desktop ime PRIJE kompresije
+        # (check-then-use race - dva paralelna uploada istog imena mogu
+        # izabrati isti slobodan naziv, pa jedan ffmpeg (-y) prepiše izlaz
+        # drugog) i ostavljao polovičan fajl na Desktopu ako ffmpeg padne.
+        # Sad se konačno ime bira i fajl premješta TEK poslije potvrđenog
+        # uspjeha - preostali race prozor (provjera slobodnog imena do
+        # rename-a) je trenutna operacija, ne višeminutna kompresija.
+        tmp_output = Path(tempfile.gettempdir()) / f'aizdravo-vk-out-{os.getpid()}-{threading.get_ident()}.mp4'
 
         # preset veryfast/crf 26 - widget prioritizuje brzinu ("odmah
         # krene kompresovanje") nad maksimalnom uštedom; vidi
@@ -307,8 +344,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '26',
             '-c:a', 'aac', '-b:a', '128k',
             '-movflags', '+faststart',
-            str(output_path),
+            str(tmp_output),
         ]
+        result = None
         try:
             result = subprocess.run(cmd, capture_output=True, timeout=1800)
         except subprocess.TimeoutExpired:
@@ -316,15 +354,32 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
         finally:
             tmp_input.unlink(missing_ok=True)
+            if result is None or result.returncode != 0:
+                tmp_output.unlink(missing_ok=True)
 
-        if result.returncode != 0 or not output_path.exists():
+        if result.returncode != 0 or not tmp_output.exists():
             detail = result.stderr.decode('utf-8', errors='ignore')[-400:] if result.stderr else ''
+            tmp_output.unlink(missing_ok=True)
             self.send_json(500, {
                 'ok': False,
                 'error': 'ffmpeg_failed',
                 'message': 'ffmpeg nije uspio da kompresuje fajl.',
                 'detail': detail,
             })
+            return
+
+        output_name = f'{stem}-kompresovano.mp4'
+        output_path = desktop / output_name
+        counter = 2
+        while output_path.exists():
+            output_name = f'{stem}-kompresovano-{counter}.mp4'
+            output_path = desktop / output_name
+            counter += 1
+        try:
+            os.replace(tmp_output, output_path)
+        except OSError as exc:
+            tmp_output.unlink(missing_ok=True)
+            self.send_json(500, {'ok': False, 'error': 'move_failed', 'message': str(exc)})
             return
 
         self.send_json(200, {

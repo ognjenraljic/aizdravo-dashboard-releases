@@ -33,9 +33,20 @@ case "$BASE_DIR" in
       TARGET="$HOME/aizdravo-$SUFFIX"
       SUFFIX=$((SUFFIX + 1))
     done
-    mv "$BASE_DIR" "$TARGET"
+    # 27.7.2026 (Codex QA) - mv/cd rezultat se ranije nije provjeravao, pa
+    # bi skripta poslije neuspjelog premještanja nastavila i na kraju
+    # javila "Gotovo!" sa pogrešnim/nepostojećim BASE_DIR u plistu.
+    if ! mv "$BASE_DIR" "$TARGET"; then
+      echo "Premještanje foldera na $TARGET nije uspjelo. Auto-start nije podešen."
+      read -p "Pritisni Enter da zatvoriš ovaj prozor..."
+      exit 1
+    fi
     BASE_DIR="$TARGET"
-    cd "$BASE_DIR"
+    if ! cd "$BASE_DIR"; then
+      echo "Folder je premješten na $BASE_DIR ali ne mogu da uđem u njega. Auto-start nije podešen."
+      read -p "Pritisni Enter da zatvoriš ovaj prozor..."
+      exit 1
+    fi
     echo "Premješteno na $BASE_DIR - koristi OVU lokaciju ubuduće (stara je nestala odatle)."
     echo ""
     ;;
@@ -53,6 +64,15 @@ fi
 
 mkdir -p "$PLIST_DIR"
 
+# XML-escape (27.7.2026, Codex QA) - $BASE_DIR/$PYTHON3 idu direktno u
+# <string> elemente ispod; & < > u putanji bi inače proizveli nevažeći
+# plist koji launchctl tiho odbija (skripta bi svejedno javila "Gotovo").
+xml_escape() {
+  printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
+}
+PYTHON3_XML="$(xml_escape "$PYTHON3")"
+BASE_DIR_XML="$(xml_escape "$BASE_DIR")"
+
 cat > "$PLIST_PATH" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -62,17 +82,17 @@ cat > "$PLIST_PATH" <<EOF
     <string>com.aizdravo.dashboard</string>
     <key>ProgramArguments</key>
     <array>
-        <string>$PYTHON3</string>
+        <string>$PYTHON3_XML</string>
         <string>-u</string>
-        <string>$BASE_DIR/server.py</string>
+        <string>$BASE_DIR_XML/server.py</string>
         <string>--no-browser</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>$BASE_DIR/dashboard-autostart.log</string>
+    <string>$BASE_DIR_XML/dashboard-autostart.log</string>
     <key>StandardErrorPath</key>
-    <string>$BASE_DIR/dashboard-autostart.log</string>
+    <string>$BASE_DIR_XML/dashboard-autostart.log</string>
 </dict>
 </plist>
 EOF
@@ -82,9 +102,18 @@ EOF
 launchctl bootstrap "gui/$(id -u)" "$PLIST_PATH" 2>/dev/null || launchctl load "$PLIST_PATH" 2>/dev/null
 
 echo ""
-echo "Gotovo! AI Zdravo Dashboard će se sad sam pokretati pri svakoj prijavi na ovaj Mac."
-echo "Otvori http://localhost:8100 u browseru i sačuvaj ga u Bookmarks (Cmd+D) -"
-echo "odsad samo klikni taj bookmark, dashboard je uvijek spreman."
+# 27.7.2026 (Codex QA) - provjeri da je LaunchAgent STVARNO učitan (plist
+# može biti nevažeći, ili launchctl može tiho odbiti) prije nego se javi
+# "Gotovo!". launchctl print vraća 0 samo ako je servis stvarno registrovan.
+if launchctl print "gui/$(id -u)/com.aizdravo.dashboard" >/dev/null 2>&1; then
+  echo "Gotovo! AI Zdravo Dashboard će se sad sam pokretati pri svakoj prijavi na ovaj Mac."
+  echo "Otvori http://localhost:8100 u browseru i sačuvaj ga u Bookmarks (Cmd+D) -"
+  echo "odsad samo klikni taj bookmark, dashboard je uvijek spreman."
+else
+  echo "Auto-start NIJE potvrđen - launchctl nije uspio da učita LaunchAgent."
+  echo "Dashboard i dalje radi ručno preko start-mac.command, samo se neće sam pokrenuti poslije restarta."
+  echo "Plist je sačuvan na: $PLIST_PATH - provjeri ga ili pokušaj ponovo."
+fi
 echo ""
 echo "Da ukloniš auto-pokretanje, dvaput klikni uninstall-autostart-mac.command"
 echo "(nalazi se u $BASE_DIR ako je folder premješten)."

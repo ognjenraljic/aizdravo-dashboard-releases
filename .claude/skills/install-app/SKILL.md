@@ -7,6 +7,8 @@ description: 'Instalira ili ažurira alat(e) u AI Zdravo Dashboard - iz zalijepl
 
 Cilj: alat treba biti UGRAĐEN I UPOTREBLJIV za par sekundi, bez nagađanja i bez više krugova pitanja - bilo da stiže kao zalijepljen prompt, sirov kod, ili kao folder koji je neko već ručno ubacio u `apps/` (svaki alat je samostalan folder + jedna script linija, pa je po dizajnu prenosiv - kopiraš `apps/<id>/` sa jednog dashboarda na drugi, i po 10 odjednom, vidi APPS_AND_WIDGETS.md "Struktura alata"). Mehaničke korake (kreiranje foldera, upis fajla, dodavanje script linije) uradi odmah bez traženja potvrde - sve je lokalno i reverzibilno (fizičko brisanje foldera + script linije vraća stanje). Ne javljaj "gotovo" dok Korak 5 nije prošao.
 
+**Bezbjednosna napomena (27.7.2026, Codex audit) - instalirani alat NIJE izolovan.** `app.js` se učitava kao običan `<script>` u istu stranicu - ima puni pristup DOM-u, `localStorage`-u (uključujući podatke DRUGIH alata, ne samo `ctx.storage`), mreži i svim `/api/...` rutama dashboarda. `ctx.storage` je konvencija za dobronamjerne alate, ne sandbox. Ovo ne mijenja mehaniku instalacije (i dalje bez usporavanja/potvrde za "prompt" i "sinhronizacija" modove - kod je ili vidljiv u razgovoru, ili ga je korisnik sam ručno stavio u folder), ali za mod **"Link dat u poruci"** (Korak 1 ispod) - gdje se kod fetch-uje sa spoljnjeg URL-a koji korisnik NIJE vidio - obavezno kratko potvrdi prije upisa (vidi taj korak).
+
 ## Prepoznavanje moda
 
 - **Instalacija (nov alat, kod stiže sad)** - prompt sadrži "Instaliraj alat" i/ili je dat link/zalijepljen kod, a APP-ID folder još ne postoji u `apps/`.
@@ -24,7 +26,7 @@ Za "dodao sam alate u folder, učitaj ih" / "sinhronizuj alate" - nema pojedina�
 
 ## Korak 1 - Nabavi kod (Sinhronizacija ide direktno na odjeljak iznad - kod je već na disku)
 
-- Link dat u poruci (`ovog linka: <URL>`) - fetch ga.
+- Link dat u poruci (`ovog linka: <URL>`) - PRIJE fetch-a, kratko potvrdi: "Skidam kod sa <URL> i instaliram ga - alat će imati pun pristup dashboardu (isto kao i sam dashboard). Nastaviti?". Tek poslije potvrde fetch-uj i nastavi. Ovo je JEDINI korak u cijelom procesu koji traži potvrdu - ne usporava ostatak instalacije.
 - Kod zalijepljen u istoj poruci/kodnom bloku - koristi direktno.
 - Fajl je već sačuvan u `apps/<id>/app.js` (ručno prekopiran folder) - ništa se ne upisuje, samo pređi na Korak 2 (validacija) i Korak 4 (registracija) za taj `id`.
 - Neki alati (npr. onima kojima treba ffmpeg ili slična server-side obrada) nose i izmjenu za `server.py`, odvojeno od `apps/<id>/app.js` - prepoznaj po eksplicitnoj oznaci (drugi kodni blok, "server.py izmjena" napomena) i primijeni je ODVOJENO. Nikad ne trpaj server-side kod unutar `apps/<id>/app.js` - vidi APPS_AND_WIDGETS.md pravilo 2 (server je opcion, mora se jasno degradirati bez sebe, poruka ne rušenje).
@@ -56,10 +58,10 @@ Ako nešto ne prolazi, ispravi sam ako je očigledno (npr. icon koji ne postoji 
 ## Korak 5 - Provjeri PRIJE nego kažeš "gotovo"
 
 1. **Sintaksa.** `node --check apps/<id>/app.js`. Ako je mijenjan i `server.py`: `python3 -c "import ast; ast.parse(open('server.py').read())"` (NE `py_compile` - piše cache fajl koji zna pući na permission greškama u sandboxovanom okruženju).
-2. **Server radi.** `curl -s -o /dev/null -w '%{http_code}' http://localhost:8100/`. Ako nije 200, pokreni ga (`./start-mac.command` na Macu / `start-windows.bat` na Windowsu - vidi CLAUDE.md Korak 1).
+2. **Server radi.** `curl -s -o /dev/null -w '%{http_code}' http://localhost:8100/`. Ako nije 200, pokreni ga (`./start-mac.command` na Macu / `start-windows.bat` na Windowsu - vidi CLAUDE.md Korak 3).
 3. **Restart samo ako treba.** Ako je mijenjan `server.py`, server MORA se restartovati da pokupi izmjenu (Python se ne hot-reload-uje kao statični JS/HTML) - `python3 server.py --stop` pa ponovo pokreni. Ako je promijenjen SAMO `app.js`/`index.html`, restart nije potreban - server već šalje `Cache-Control: no-store` na sam HTML, običan refresh u browseru je dovoljan.
 4. **Alat se stvarno pojavljuje - provjeri SVAKU formu koju ima, ne samo jednu.** Alat može imati widget formu, app formu, ili obje odjednom (npr. `quick-notes`) - manifest sam kaže koje ima (`widget`/`app` polja), pa provjeri tačno te:
-   - **Ima `widget` formu** → otvori Aplikacije panel, prebaci na "Widgeti" prikaz, nađi karticu alata, potvrdi da preview NE prikazuje "Alat je javio grešku".
+   - **Ima `widget` formu** → otvori katalog (+ dugme dole desno → Alati), prebaci na "Widgeti" prikaz, nađi karticu alata, potvrdi da preview NE prikazuje "Alat je javio grešku".
    - **Ima `app` formu** → u "Aplikacije" prikazu (default) klikni alat da se otvori kao poseban tab, potvrdi da se stranica renderuje bez greške, pa se vrati na Dashboard (klik na "Dashboard" karticu).
    - Ako nema browser alata dostupnog u ovoj sesiji, minimalna provjera je obavezna za obje forme: `curl -s http://localhost:8100/index.html | grep 'apps/<id>/app.js'` potvrđuje da je script linija stvarno servirana (ne dokazuje da je manifest prošao registraciju ni da forma radi, ali hvata očigledne greške poput fajla koji nije sačuvan).
 5. **Ako alat ima `widget` formu i korisnik već ima pripremljenu, imenovanu praznu sekciju za njega** - podsjeti ga (ne radi sam, pozicija/veličina je njegov izbor) da otvori njen meni (•••) → "Poveži alat..." da ga odmah prikaže tamo, umjesto da traži isti alat u katalogu i dodaje novu odvojenu karticu.
@@ -72,4 +74,4 @@ Ako nešto ne prolazi, ispravi sam ako je očigledno (npr. icon koji ne postoji 
 
 ## Reference
 
-Pun kontrakt (manifest oblik, `ctx` API, pravila autora alata, kompletan primjer): `APPS_AND_WIDGETS.md`. Dashboard kreće prazan - nema instaliranog alata na disku, pa nema živog fajl-šablona za kopiranje; oslanjaj se na primjer iz `APPS_AND_WIDGETS.md`. Za alat kome treba server-side obrada (ffmpeg i sl.): `server.py` već sadrži `handle_video_compress` kao živu referencu tog obrasca (`do_POST` dispatch preko `path == '/api/<id>/...'`), čak i ako sam `apps/video-kompresor/` folder trenutno nije instaliran.
+Pun kontrakt (manifest oblik, `ctx` API, pravila autora alata, kompletan primjer): `APPS_AND_WIDGETS.md`. Dashboard kreće prazan - nema instaliranog alata na disku da posluži kao živ fajl-šablon; oslanjaj se na primjer iz `APPS_AND_WIDGETS.md`. Za alat kome treba server-side obrada (ffmpeg i sl.): `server.py` već sadrži `handle_video_compress` kao živu referencu tog obrasca (`do_POST` dispatch preko `path == '/api/<id>/...'`), čak i ako sam `apps/video-kompresor/` folder trenutno nije instaliran.

@@ -1,4 +1,20 @@
 (async () => {
+  // Sigurnosna provjera (27.7.2026, nakon Codex bezbjednosnog audita) - ikonica
+  // (tab.icon, app.icon iz tuđeg manifesta, appId iz board-layout kartice) se na
+  // više mjesta ubacuje u innerHTML kao dio href="#icon-tabler-<ovo>". Bez ovoga
+  // zlonamjeran/pokvaren tool manifest ili ručno izmijenjen dashboard-state.json
+  // (npr. prenesen sa drugog računara) može ubaciti proizvoljan HTML/JS. Dozvoljava
+  // SAMO kebab-case tabler-stil imena (isti oblik kao TAB_ICONS niže) - sve ostalo
+  // pada na bezbjedan default.
+  function safeIconName(icon, fallback) {
+    return typeof icon === 'string' && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(icon) ? icon : (fallback || 'tool');
+  }
+  // Isti princip za appId koji se ispisuje u porukama grešaka - dolazi iz
+  // dashboard-state.json (card.dataset.appId), ne iz apps-core registra, pa nije
+  // garantovano da je prošao kroz ID_RE validaciju.
+  function safeAppIdText(id) {
+    return typeof id === 'string' && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(id) ? id : '?';
+  }
   const STATE_PREFIX = 'aizdravo:';
   const STATE_EXCLUDED_KEYS = new Set(['aizdravo:error-log']);
   let stateSyncTimer = null;
@@ -1066,7 +1082,7 @@
             const app = AIZdravo.getApp(appId);
             card.classList.toggle('pcard-fixed-size', !!app && app.resizable === false);
           } else {
-            content.innerHTML = '<div class="app-render-error"><strong>Alat nije dostupan</strong><span>„' + (appId || '?') + '" nije instaliran ili je uklonjen. Sekcija i njeni podaci su sačuvani.</span></div>';
+            content.innerHTML = '<div class="app-render-error"><strong>Alat nije dostupan</strong><span>„' + safeAppIdText(appId) + '" nije instaliran ili je uklonjen. Sekcija i njeni podaci su sačuvani.</span></div>';
           }
           return;
         }
@@ -1095,7 +1111,7 @@
           tile.className = 'app-tile';
           tile.title = app.name + ' — ' + app.description;
           tile.innerHTML =
-            '<span class="app-icon-tile app-icon-tile--md"><svg><use href="#icon-tabler-' + app.icon + '"></use></svg></span>' +
+            '<span class="app-icon-tile app-icon-tile--md"><svg><use href="#icon-tabler-' + safeIconName(app.icon) + '"></use></svg></span>' +
             '<span class="app-tile-name"></span>';
           tile.querySelector('.app-tile-name').textContent = app.name;
           tile.addEventListener('click', () => openAppTabGlobal(app.id));
@@ -1248,7 +1264,7 @@
           '<span>Dodaj sekciju, ili izaberi widget iz kataloga aplikacija - to je najbrži put do prvog alata na boardu.</span>' +
           '<div class="board-empty-actions">' +
             '<button type="button" data-empty-action="section">Dodaj sekciju</button>' +
-            '<button type="button" data-empty-action="apps">Pogledaj aplikacije</button>' +
+            '<button type="button" data-empty-action="apps">Pogledaj widgete</button>' +
           '</div>';
         empty.querySelector('[data-empty-action="section"]').addEventListener('click', () => requestAddSection());
         // Katalog otvoren pravo na Widgeti prikaz - sa praznog taba
@@ -1844,9 +1860,6 @@
   const gridToggle = document.getElementById('gridToggle');
   const layoutLockToggle = document.getElementById('layoutLockToggle');
   const saveStatusToggle = document.getElementById('saveStatusToggle');
-  const exportDashboard = document.getElementById('exportDashboard');
-  const importDashboard = document.getElementById('importDashboard');
-  const importDashboardFile = document.getElementById('importDashboardFile');
   const resetDashboard = document.getElementById('resetDashboard');
   const themeGrid = document.getElementById('themeGrid');
   const builtInThemeChoices = themeGrid ? Array.from(themeGrid.querySelectorAll('[data-theme-option]')) : [];
@@ -2042,39 +2055,6 @@
   if (layoutLockToggle) layoutLockToggle.addEventListener('click', () => setLayoutLocked(!layoutLocked));
   if (saveStatusToggle) saveStatusToggle.addEventListener('click', () => setSaveStatusHidden(!saveStatusHidden));
 
-  if (exportDashboard) exportDashboard.addEventListener('click', () => {
-    const payload = { version: 1, exportedAt: new Date().toISOString(), values: collectDashboardState() };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `ai-zdravo-dashboard-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    showToast('Backup dashboarda je izvezen.');
-  });
-  if (importDashboard) importDashboard.addEventListener('click', () => importDashboardFile && importDashboardFile.click());
-  if (importDashboardFile) importDashboardFile.addEventListener('change', async () => {
-    const file = importDashboardFile.files && importDashboardFile.files[0];
-    if (!file) return;
-    try {
-      const payload = JSON.parse(await file.text());
-      if (!payload || !payload.values || typeof payload.values !== 'object') throw new Error('invalid');
-      Object.entries(payload.values).forEach(([key, value]) => {
-        if (key.startsWith(STATE_PREFIX) && !STATE_EXCLUDED_KEYS.has(key) && typeof value === 'string') persistValue(key, value);
-      });
-      await flushStateChanges();
-      showToast('Backup je uspješno uvezen. Dashboard se osvježava.');
-      suppressUnloadLayoutSave = true;
-      setTimeout(() => location.reload(), 700);
-    } catch (err) {
-      showToast('Backup fajl nije ispravan.');
-    } finally {
-      importDashboardFile.value = '';
-    }
-  });
   if (resetDashboard) resetDashboard.addEventListener('click', async () => {
     const approved = await askConfirmation('Vratiti cijeli dashboard na početno stanje? Preporučujemo da prvo izvezeš backup.', resetDashboard);
     if (!approved) return;
@@ -2242,7 +2222,7 @@
       btn.className = 'nav-item';
       btn.type = 'button';
       btn.dataset.view = tab.id;
-      btn.innerHTML = '<svg class="nav-icon"><use href="#icon-tabler-' + tab.icon + '"></use></svg>' +
+      btn.innerHTML = '<svg class="nav-icon"><use href="#icon-tabler-' + safeIconName(tab.icon) + '"></use></svg>' +
         '<span class="nav-label"></span>';
       btn.querySelector('.nav-label').textContent = tab.name;
       btn.addEventListener('click', () => activate(tab.id));
@@ -2306,7 +2286,7 @@
       section.dataset.view = tab.id;
       section.id = 'view-' + tab.id;
       section.innerHTML = '<div class="view-heading">' +
-        '<svg class="view-heading-icon"><use href="#icon-tabler-' + tab.icon + '"></use></svg>' +
+        '<svg class="view-heading-icon"><use href="#icon-tabler-' + safeIconName(tab.icon) + '"></use></svg>' +
         '<h1></h1></div><div class="board"></div>';
       section.querySelector('h1').textContent = tab.name;
       canvasWrapMain.appendChild(section);
@@ -2494,7 +2474,7 @@
       apps.forEach(app => {
         const label = document.createElement('label');
         label.className = 'folder-pick-item';
-        label.innerHTML = '<input type="checkbox"><span class="app-icon-tile app-icon-tile--sm"><svg><use href="#icon-tabler-' + app.icon + '"></use></svg></span><span class="folder-pick-name"></span>';
+        label.innerHTML = '<input type="checkbox"><span class="app-icon-tile app-icon-tile--sm"><svg><use href="#icon-tabler-' + safeIconName(app.icon) + '"></use></svg></span><span class="folder-pick-name"></span>';
         label.querySelector('.folder-pick-name').textContent = app.name;
         const box = label.querySelector('input');
         box.value = app.id;
@@ -2549,7 +2529,7 @@
       const iconOk = nameOnlyMode || !!selectedIcon;
       addTabConfirmBtn.disabled = !(nameOk && iconOk);
       if (modalHelp) {
-        if (!nameOk) modalHelp.textContent = 'Unesi ime da bi nastavila.';
+        if (!nameOk) modalHelp.textContent = 'Unesi ime za nastavak.';
         else if (!iconOk) modalHelp.textContent = 'Izaberi ikonicu za tab.';
         else if (modalMode === 'add-section' && selectedSectionType === 'folder') modalHelp.textContent = 'Folder pokreće izabrane aplikacije jednim klikom.';
         else if (modalMode === 'add-section' || modalMode === 'edit-section') modalHelp.textContent = 'Ime će biti prikazano u zaglavlju sekcije.';
@@ -2756,7 +2736,7 @@
       apps.forEach(app => {
         const label = document.createElement('label');
         label.className = 'folder-pick-item';
-        label.innerHTML = '<input type="radio" name="attach-app-pick"><span class="app-icon-tile app-icon-tile--sm"><svg><use href="#icon-tabler-' + app.icon + '"></use></svg></span><span class="folder-pick-name"></span>';
+        label.innerHTML = '<input type="radio" name="attach-app-pick"><span class="app-icon-tile app-icon-tile--sm"><svg><use href="#icon-tabler-' + safeIconName(app.icon) + '"></use></svg></span><span class="folder-pick-name"></span>';
         label.querySelector('.folder-pick-name').textContent = app.name;
         const radio = label.querySelector('input');
         radio.value = app.id;
@@ -2882,7 +2862,7 @@
       tabBtn.dataset.appPage = app.id;
       tabBtn.setAttribute('role', 'tab');
       tabBtn.innerHTML =
-        '<svg><use href="#icon-tabler-' + app.icon + '"></use></svg>' +
+        '<svg><use href="#icon-tabler-' + safeIconName(app.icon) + '"></use></svg>' +
         '<span class="top-tab-label"></span>' +
         '<span class="top-tab-close" title="Zatvori aplikaciju" aria-label="Zatvori aplikaciju &quot;' + app.name + '&quot;"><svg><use href="#icon-tabler-x"></use></svg></span>';
       tabBtn.querySelector('.top-tab-label').textContent = app.name;
@@ -2901,7 +2881,7 @@
       page.dataset.appPage = app.id;
       page.innerHTML =
         '<div class="app-page-heading">' +
-          '<span class="app-icon-tile app-icon-tile--md"><svg><use href="#icon-tabler-' + app.icon + '"></use></svg></span>' +
+          '<span class="app-icon-tile app-icon-tile--md"><svg><use href="#icon-tabler-' + safeIconName(app.icon) + '"></use></svg></span>' +
           '<div class="app-page-titles"><h1></h1><span class="app-version"></span></div>' +
         '</div>' +
         '<div class="app-page-surface"></div>';
@@ -2971,7 +2951,7 @@
     function topbarIconMarkup(icon) {
       return icon === 'ai-zdravo-logo'
         ? '<img src="assets/logo.png" alt="">'
-        : '<svg><use href="#icon-tabler-' + icon + '"></use></svg>';
+        : '<svg><use href="#icon-tabler-' + safeIconName(icon) + '"></use></svg>';
     }
     function applyTopbarIdentity() {
       if (!topTabDashboardBtn) return;
@@ -3279,7 +3259,7 @@
           header.className = 'app-tile-header';
           header.title = app.name + ' — v' + app.version + ' — ' + app.description;
           header.innerHTML =
-            '<span class="app-icon-tile app-icon-tile--lg"><svg><use href="#icon-tabler-' + app.icon + '"></use></svg></span>' +
+            '<span class="app-icon-tile app-icon-tile--lg"><svg><use href="#icon-tabler-' + safeIconName(app.icon) + '"></use></svg></span>' +
             '<span class="app-tile-name"></span>';
           header.querySelector('.app-tile-name').textContent = app.name;
           header.addEventListener('click', () => {
@@ -3328,7 +3308,7 @@
         header.className = 'app-tile-header';
         header.title = app.name + ' — v' + app.version + ' — ' + app.description;
         header.innerHTML =
-          '<span class="app-icon-tile app-icon-tile--sm"><svg><use href="#icon-tabler-' + app.icon + '"></use></svg></span>' +
+          '<span class="app-icon-tile app-icon-tile--sm"><svg><use href="#icon-tabler-' + safeIconName(app.icon) + '"></use></svg></span>' +
           '<span class="app-tile-name"></span>';
         header.querySelector('.app-tile-name').textContent = app.name;
         header.addEventListener('click', () => addWidgetToActiveTab(app, app.defaultSize));
@@ -3581,7 +3561,7 @@
         const row = document.createElement('div');
         row.className = 'installed-app-row' + (disabled ? ' is-disabled' : '');
         row.innerHTML =
-          '<span class="installed-app-icon"><svg><use href="#icon-tabler-' + app.icon + '"></use></svg></span>' +
+          '<span class="installed-app-icon"><svg><use href="#icon-tabler-' + safeIconName(app.icon) + '"></use></svg></span>' +
           '<div class="installed-app-meta"><strong></strong><span></span></div>' +
           '<button type="button" class="installed-app-action"></button>';
         row.querySelector('strong').textContent = app.name + ' v' + app.version;
