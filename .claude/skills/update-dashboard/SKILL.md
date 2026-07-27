@@ -9,7 +9,7 @@ Cilj: dashboard core (izgled, funkcije, ispravke) se ažurira na najnoviju verzi
 
 ## Izvor istine
 
-Core fajlovi se hostuju u GitHub repou `ognjenraljic/aizdravo-dashboard-releases` (privatan repo, samo core - bez korisničkih podataka). Raw URL baza:
+Core fajlovi se hostuju u GitHub repou `ognjenraljic/aizdravo-dashboard-releases` (JAVAN repo - mora biti public da `raw.githubusercontent.com` fetch radi bez autentikacije sa bilo čije mašine koja skida dashboard; sadrži SAMO core - bez korisničkih podataka, provjereno prije objave). Raw URL baza:
 
 ```
 https://raw.githubusercontent.com/ognjenraljic/aizdravo-dashboard-releases/main/
