@@ -227,7 +227,14 @@ def main():
     parser.add_argument('--auto-merge-server', action='store_true', help='primijeni server.py i ako ima customizaciju (default: preskoči i prijavi)')
     args = parser.parse_args()
 
-    current_dir = Path(args.current_dir)
+    # .resolve() je OBAVEZAN ovdje - dokumentacija (SKILL.md) instruira
+    # korisnika/agenta da pozove skriptu bas kao `... dashboard_updater.py .`
+    # (relativna tacka). Path('.').name je prazan string i Path('.').parent
+    # je Path('.') sam - bez resolve(), backup_folder() i staging_dir ispod
+    # zavrse UNUTAR current_dir-a samog (npr. "./-backup-<ts>" umjesto
+    # sibling foldera "../<pravo-ime>-backup-<ts>"), otkriveno uzivo na
+    # ai-zdravo-dashboard-serijal 28.7.2026.
+    current_dir = Path(args.current_dir).resolve()
     owns_staging_dir = False
 
     if args.source_dir:

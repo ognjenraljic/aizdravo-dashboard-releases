@@ -9,6 +9,7 @@ update mehanike ili core fajlova.
 """
 
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -137,6 +138,50 @@ class DashboardUpdaterTest(unittest.TestCase):
         self.assertEqual(
             (current_dir / 'MANIFEST.json').read_text(encoding='utf-8'),
             '{"nova": "verzija"}',
+        )
+
+    def test_relative_current_dir_via_cli_produces_correctly_placed_backup(self):
+        # 28.7.2026 bug: main() nikad nije rjesavao current_dir u apsolutnu
+        # putanju, a SKILL.md instruira TACNO `cd <folder> && python3
+        # tools/dashboard_updater.py .` - Path('.').name je prazan string i
+        # Path('.').parent je Path('.') sam, pa je backup_folder() (i
+        # staging_dir u main()) zavrsavao UNUTAR current_dir-a ("./-backup-
+        # <ts>") umjesto kao sibling folder. Otkriveno uzivo na
+        # ai-zdravo-dashboard-serijal. Ovaj test poziva du.main() bas kao
+        # sto ce ga SKILL.md pozvati - relativna tacka, iz tog foldera.
+        current_dir = self.tmp / 'my-dashboard'
+        staging_dir = self.tmp / 'staging'
+        _make_fixture_from_repo(current_dir)
+        _make_fixture_from_repo(staging_dir)
+        self._write_state(current_dir, {})
+        (current_dir / 'VERSION').write_text('1.0.2\n', encoding='utf-8')
+        (staging_dir / 'VERSION').write_text('1.0.3\n', encoding='utf-8')
+        # fixture kopira i MANIFEST.json iz OVOG repoa (dio CORE_FILES) -
+        # njegov hash za VERSION bi odgovarao STAROM sadržaju, ne '1.0.3\n'
+        # koji test upravo upisuje. main() sa --source-dir učita manifest
+        # SAMO ako fajl postoji - obriši ga da test ide offline-bez-manifest
+        # putanjom (isto sto i ostali testovi rade preko apply_update() bez
+        # manifest argumenta).
+        (staging_dir / 'MANIFEST.json').unlink(missing_ok=True)
+
+        old_cwd = os.getcwd()
+        old_argv = sys.argv
+        try:
+            os.chdir(current_dir)
+            sys.argv = ['dashboard_updater.py', '.', '--source-dir', str(staging_dir)]
+            du.main()
+        finally:
+            os.chdir(old_cwd)
+            sys.argv = old_argv
+
+        sibling_backups = list(self.tmp.glob('my-dashboard-backup-*'))
+        self.assertEqual(
+            len(sibling_backups), 1,
+            'backup mora biti sibling folder sa punim imenom (npr. "my-dashboard-backup-..."), ne "-backup-..."',
+        )
+        self.assertFalse(
+            list(current_dir.glob('*backup*')),
+            'backup ne smije zavrsiti UNUTAR current_dir-a samog',
         )
 
     def test_never_touch_paths_are_not_in_core_files(self):
