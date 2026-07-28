@@ -793,6 +793,14 @@ body.is-app-fullscreen .save-status { display: none; }
   margin: 0 0 4px;
   text-wrap: balance;
 }
+@media (min-width: 1101px) {
+  /* Ognjenov zahtjev 28.7.2026 - naslov u jednoj liniji na širim ekranima.
+     NE spuštati granicu ispod 1101px - testirano uživo na 768px (tablet)
+     i tekst se siječe na desnoj ivici (nema dovoljno prostora za punu
+     dužinu bez preloma), na 375px (mobilni) izlazi potpuno van ekrana.
+     1100px je već postojeća granica u ovom stylesheet-u za isti raspon. */
+  .hero-text h1 { white-space: nowrap; }
+}
 .hero-text h1 .accent {
   background: linear-gradient(to right, var(--accent), var(--accent-highlight));
   -webkit-background-clip: text;
