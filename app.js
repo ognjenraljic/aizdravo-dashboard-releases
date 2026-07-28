@@ -1861,6 +1861,17 @@
   const layoutLockToggle = document.getElementById('layoutLockToggle');
   const saveStatusToggle = document.getElementById('saveStatusToggle');
   const resetDashboard = document.getElementById('resetDashboard');
+  const settingsVersionEl = document.getElementById('settingsVersion');
+  // 28.7.2026 - broj verzije se čita iz VERSION fajla umjesto da bude
+  // hardkodiran tekst u index.html (koji je ostajao zauvijek na "v1.0.0"
+  // bez obzira na stvarnu instaliranu verziju - update mehanizam ažurira
+  // VERSION fajl, ali nikad nije dirao ovaj hardkodiran string).
+  if (settingsVersionEl) {
+    fetch('VERSION').then(r => r.ok ? r.text() : null).then(text => {
+      const version = (text || '').trim();
+      if (version) settingsVersionEl.textContent = `AI Zdravo Dashboard v${version}`;
+    }).catch(() => {});
+  }
   const themeGrid = document.getElementById('themeGrid');
   const builtInThemeChoices = themeGrid ? Array.from(themeGrid.querySelectorAll('[data-theme-option]')) : [];
   const customThemeOpen = document.getElementById('customThemeOpen');

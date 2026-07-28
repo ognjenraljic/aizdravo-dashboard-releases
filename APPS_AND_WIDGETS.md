@@ -103,6 +103,13 @@ Greška u tuđem listeneru se guta uz `console.warn` — pokvaren slušalac ne o
 4. **Greška alata ne smije srušiti dashboard** — host ionako hvata izuzetke iz `widget()`/`app()` i prikaže poruku unutar kartice/taba, ali alat treba i sam biti defanzivan.
 5. **Prefiksuj SVE svoje identifikatore po alatu** — CSS klase (`qn-...`), DOM id-jeve ako ih uopšte koristiš (bolje `el.querySelector` po klasi nego `getElementById`), i imena bus događaja (`<app-id>:<naziv>`). Dva alata bez prefiksa mogu tiho pokvariti jedan drugog.
 6. **Renderuj fluidno** — widget dobija kontejner sa sopstvenim scrollom, pa loša veličina najgore znači scrollbar; ali alat treba da koristi fleksibilan CSS (flex/grid, %, minmax) da lijepo radi u svakoj veličini koju korisnik razvuče.
+7. **Tekst/ikonice unutar widgeta skaliraj prema STVARNOJ veličini sekcije, ne prema jednoj testiranoj veličini.** "Poveži alat..." (vidi "Kako korisnik koristi alat" ispod) prikači widget na POSTOJEĆU sekciju bilo koje veličine koju je korisnik već ručno namjestio — ne mora odgovarati nijednoj `s`/`m`/`l` vrijednosti iz manifesta. Fiksni `px` font/ikonica koji izgleda dobro na `s` (8×6) ostaje sitan i izgubljen u velikoj sekciji, ili prelije malu. Umjesto fiksnih `px` vrijednosti, koristi CSS container query jedinice: postavi `container-type:size` na korijenski element widgeta, pa `font-size`/`width`/`height` u `cqh`/`cqw` (ili `min(Xcqh,Ycqw)` za kontrolu po oba pravca) obavezno unutar `clamp(min, ..., max)` da se ne izgubi na ekstremnim omjerima. Primjer (skraćeno, cijeli obrazac u `apps/vremenska-prognoza/app.js` ako je instaliran preko epizode 1):
+   ```css
+   .moj-widget { container-type:size; }
+   .moj-widget .broj { font-size:clamp(18px, min(20cqh,15cqw), 88px); }
+   .moj-widget .ikonica { width:clamp(20px, min(22cqh,16cqw), 96px); }
+   ```
+   Prije nego prijaviš alat gotovim, testiraj vizuelno na bar dvije različite veličine sekcije (npr. default `s` i `l` preset iz menija sekcije), ne samo onu na kojoj si prvo probao.
 
 ## Šta se dešava kad je manifest pokvaren
 
