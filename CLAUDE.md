@@ -31,16 +31,18 @@ Provjeri da li u root-u ovog foldera postoji fajl `.aizdravo-welcomed`:
 
 ## 3. Pokreni dashboard (uvijek, automatski, bez pitanja)
 
-Provjeri da li server već radi (`curl -s -o /dev/null -w '%{http_code}' http://localhost:8100/` ili ekvivalent), i ako ne:
+**NIKAD ne zaključuj "već radi" samo zato što `curl http://localhost:8100/` vrati 200.** Port 8100 je DEFAULT za SVAKI aizdravo dashboard folder na ovoj mašini - ako korisnik ima i drugi folder (svoju ličnu kopiju, drugi preuzet primjerak, prošlu epizodu serijala) već pokrenut, taj isti port već odgovara sa 200 iako je u pitanju POTPUNO DRUGI folder. Provjera samo po HTTP statusu je ovdje pogrešna - dogodilo se uživo 28.7.2026: korisnik je otvorio SVJEŽE preuzet folder, port 8100 je već odgovarao (njegova stara lična kopija), i pokretanje je preskočeno u potpunosti - korisnik je vidio SVOJ STARI dashboard umjesto novog praznog.
+
+Zato UVIJEK direktno pokreni skriptu, bez preliminarne odluke da li treba:
 
 ```bash
 cd "$(pwd)" && ./start-mac.command   # Mac
 ```
-ili na Windowsu `start-windows.bat`. Ovo je bezbjedno pokrenuti bilo kad — skripta sama detektuje da li je dashboard već pokrenut i neće dići drugi proces. Server ostaje živ u pozadini i poslije zatvaranja terminala (detached od 24.7.2026), pa se ovo ne mora ponavljati unutar iste sesije/dana, ali provjeri svaki put kad korisnik kaže da dashboard "ne radi" ili "ne može da se poveže" — najčešći uzrok je da server nije pokrenut (npr. poslije restarta računara).
+ili na Windowsu `start-windows.bat`. Ovo je bezbjedno pokrenuti bilo kad, bez izuzetka - `server.py` sam ispravno odlučuje: ako OVAJ ISTI folder već ima živ server na nekom portu, prepoznaje to preko `/api/instance` rute (poredi stvaran apsolutni put foldera, ne samo HTTP status) i ne diže drugi proces; ako je port zauzet NEČIM DRUGIM (drugi aizdravo folder, bilo koja druga app), sam bira sljedeći slobodan port (8101, 8102...) i to ispisuje. Server ostaje živ u pozadini i poslije zatvaranja terminala (detached od 24.7.2026), pa se ovo ne mora ponavljati unutar iste sesije/dana, ali provjeri svaki put kad korisnik kaže da dashboard "ne radi" ili "ne može da se poveže" - najčešći uzrok je da server nije pokrenut (npr. poslije restarta računara).
 
-Poslije uspješnog starta, reci korisniku da otvori `http://localhost:8100` i sačuva ga u Bookmarks (Cmd+D / Ctrl+D) — dvoklik na taj bookmark će odsad otvarati dashboard.
+**Pročitaj STVARAN port iz izlaza skripte** ("AI Zdravo Dashboard -> http://localhost:XXXX") - ne pretpostavljaj da je uvijek 8100. Reci korisniku da otvori TAJ tačan URL i sačuva ga u Bookmarks (Cmd+D / Ctrl+D) - dvoklik na taj bookmark će odsad otvarati baš OVAJ folder, čak i ako je na drugom portu od 8100.
 
-Tek OVDJE, kad je `curl` na `http://localhost:8100/` stvarno vratio 200 (ne prije) - ako `.aizdravo-welcomed` iz Koraka 1 još ne postoji, sačuvaj ga sad (`touch .aizdravo-welcomed` ili ekvivalent). Ovo potvrđuje da je korisnik zaista dobio radan dashboard prije nego se pozdrav označi kao odrađen.
+Tek OVDJE, kad je `curl` na taj stvaran URL (port iz izlaza skripte, ne pretpostavljen 8100) stvarno vratio 200 (ne prije) - ako `.aizdravo-welcomed` iz Koraka 1 još ne postoji, sačuvaj ga sad (`touch .aizdravo-welcomed` ili ekvivalent). Ovo potvrđuje da je korisnik zaista dobio radan dashboard OVOG foldera prije nego se pozdrav označi kao odrađen.
 
 ## 4. Auto-start pri prijavi na računar (ponudi, ne pokreći bez potvrde)
 
