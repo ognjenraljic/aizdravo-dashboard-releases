@@ -11,3 +11,4 @@ dashboard.pid
 
 # Log auto-pokrenutog servera (install-autostart-mac.command).
 dashboard-autostart.log
+.DS_Store
