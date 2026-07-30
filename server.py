@@ -2,6 +2,7 @@
 import argparse
 import atexit
 import http.server
+import importlib.util
 import json
 import os
 import re
@@ -37,13 +38,182 @@ STATE_LOCK = threading.Lock()
 MAX_STATE_BYTES = 1024 * 1024
 MAX_ERROR_LOG_BYTES = 256 * 1024
 MAX_ERROR_LINES = 200
-# apps/video-kompresor - sirov video bajt-tok, ne JSON, pa sopstveni,
-# mnogo veći cap (ne dijeli MAX_STATE_BYTES sa /api/state).
-MAX_VIDEO_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
 # Trajno brisanje alata (27.7.2026, katalog "Ukloni trajno") - isti id
 # oblik koji apps-core.js registerApp() zahtijeva, provjeren PRIJE
 # ijednog file-system poziva da putanja ne može pobjeći iz apps/.
 APP_ID_RE = re.compile(r'^[a-z0-9]+(-[a-z0-9]+)*$')
+
+
+# --- Plugin sistem za server-zavisne alate (30.7.2026) ---
+# Prije ovoga, svaki alat kome je trebao server dio (npr. ffmpeg) je
+# zahtijevao RUČNO dodavanje ruta/metoda direktno u OVAJ fajl (SERVER-
+# SETUP.md instrukcija za AI agenta koji instalira). Sad svaki takav alat
+# nosi SOPSTVENI apps/<id>/server_ext.py sa ROUTES = {(method, path):
+# 'ime_funkcije'} i funkcijama koje primaju `handler` (živu Handler
+# instancu - send_json/read_json_body/rfile/headers su joj metode) kao
+# jedini argument.
+#
+# Lijeno učitavanje (PO ZAHTJEVU, ne samo pri startu servera) je namjerno
+# - ključno svojstvo: alat instaliran DOK je server već pokrenut (najčešći
+# slučaj - dashboard je otvoren, korisnik prevuče nov folder) radi ODMAH,
+# bez restarta. Keš prati mtime fajla, pa i ručna izmjena server_ext.py
+# tokom razvoja radi bez restarta.
+_PLUGIN_CACHE = {}
+_PLUGIN_CACHE_LOCK = threading.Lock()
+_PLUGIN_SHUTDOWN_HOOKS = []
+
+
+def _windows_known_folder_desktop():
+    """Pravi Windows Desktop preko SHGetKnownFolderPath(FOLDERID_Desktop) -
+    čita STVARNU, registry-konfigurisanu lokaciju bez obzira na naziv/
+    putanju (hvata poslovni OneDrive, ručno preusmjerenu lokaciju, drugi
+    disk, lokalizovan naziv foldera). Vraća None na bilo kojoj grešci
+    (uvijek ima heuristiku ispod kao fallback)."""
+    try:
+        import ctypes
+
+        class GUID(ctypes.Structure):
+            _fields_ = [
+                ('Data1', ctypes.c_ulong), ('Data2', ctypes.c_ushort),
+                ('Data3', ctypes.c_ushort), ('Data4', ctypes.c_ubyte * 8),
+            ]
+
+        FOLDERID_Desktop = GUID(
+            0xB4BFCC3A, 0xDB2C, 0x424C,
+            (ctypes.c_ubyte * 8)(0xB0, 0x29, 0x7F, 0xE9, 0x9A, 0x87, 0xC6, 0x41),
+        )
+        path_ptr = ctypes.c_wchar_p()
+        hr = ctypes.windll.shell32.SHGetKnownFolderPath(
+            ctypes.byref(FOLDERID_Desktop), 0, 0, ctypes.byref(path_ptr)
+        )
+        if hr == 0 and path_ptr.value:
+            path = Path(path_ptr.value)
+            ctypes.windll.ole32.CoTaskMemFree(path_ptr)
+            return path
+    except Exception:
+        pass
+    return None
+
+
+def _resolve_desktop_dir():
+    """Desktop folder rezolucija (dijeljena core-utility, ne alat-
+    specifična). Na Windowsu prvo pokuša pravi Windows API, pa OneDrive
+    heuristiku, pa običnu ~/Desktop. macOS/Linux nemaju ovaj problem."""
+    home = Path.home()
+    if sys.platform.startswith('win'):
+        known = _windows_known_folder_desktop()
+        if known and known.is_dir():
+            return known
+        onedrive_desktop = home / 'OneDrive' / 'Desktop'
+        if onedrive_desktop.is_dir():
+            return onedrive_desktop
+    return home / 'Desktop'
+
+
+def _safe_popen_kwargs():
+    """Belt-and-suspenders kwargs za BILO KOJI dugotrajan/detached
+    subprocess (ffmpeg i slično): (1) stdin=DEVNULL - kad je dashboard
+    pokrenut detached, dijete bez ovoga može pokušati čitati naslijeđeni
+    stdin i suspendovati se (SIGTTOU). (2) nova process grupa/sesija - da
+    /cancel-stil rute mogu ubiti CIJELU grupu, ne samo glavni PID."""
+    kwargs = {'stdin': subprocess.DEVNULL}
+    if sys.platform.startswith('win'):
+        kwargs['creationflags'] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
+    else:
+        kwargs['start_new_session'] = True
+    return kwargs
+
+
+class PluginAPI:
+    """Stabilan skup core utility-ja dostupnih svakom server_ext.py preko
+    injektovanog `aizdravo` imena - namjerno malen i generički (Desktop
+    rezolucija i sigurni subprocess kwargs su dovoljno česta potreba da ih
+    svaki budući alat ponovo koristi umjesto da duplicira Windows/OneDrive
+    detekciju)."""
+    BASE_DIR = BASE_DIR
+    APP_ID_RE = APP_ID_RE
+
+    @staticmethod
+    def resolve_desktop_dir():
+        return _resolve_desktop_dir()
+
+    @staticmethod
+    def safe_popen_kwargs():
+        return _safe_popen_kwargs()
+
+    @staticmethod
+    def register_shutdown_hook(fn):
+        """server_ext.py pozove ovo JEDNOM, pri importu, ako drži
+        pozadinske procese/niti koje treba pospremiti pri gašenju servera
+        (isti princip kao stari _kill_all_video_jobs, sad generički)."""
+        _PLUGIN_SHUTDOWN_HOOKS.append(fn)
+
+
+def _run_plugin_shutdown_hooks():
+    for fn in _PLUGIN_SHUTDOWN_HOOKS:
+        try:
+            fn()
+        except Exception:
+            pass
+
+
+def _load_plugin(app_id):
+    """Učitaj (ili vrati keširanu) apps/<app_id>/server_ext.py instancu.
+    None ako fajl ne postoji ili ne uspije da se učita - loš/pokvaren
+    plugin ne smije srušiti cijeli server, samo ta ruta ostaje 404."""
+    apps_root = (BASE_DIR / 'apps').resolve()
+    ext_path = (apps_root / app_id / 'server_ext.py').resolve()
+    if ext_path.parent.parent != apps_root or not ext_path.is_file():
+        return None
+    try:
+        mtime = ext_path.stat().st_mtime
+    except OSError:
+        return None
+    with _PLUGIN_CACHE_LOCK:
+        cached = _PLUGIN_CACHE.get(app_id)
+        if cached and cached[0] == mtime:
+            return cached[1]
+    spec = importlib.util.spec_from_file_location(f'aizdravo_plugin_{app_id}', ext_path)
+    module = importlib.util.module_from_spec(spec)
+    module.aizdravo = PluginAPI
+    try:
+        spec.loader.exec_module(module)
+    except Exception as exc:
+        print(f'[plugin] apps/{app_id}/server_ext.py nije uspio da se učita: {exc}', file=sys.stderr)
+        return None
+    with _PLUGIN_CACHE_LOCK:
+        _PLUGIN_CACHE[app_id] = (mtime, module)
+    return module
+
+
+def _dispatch_plugin_route(handler, method, path):
+    """True ako je neki plugin obradio zahtjev (bez obzira na ishod) - u
+    tom slučaju pozivalac ne radi svoj fallback (404/static fajl). False
+    ako ruta ne pripada nijednom poznatom alatu."""
+    parts = path.split('/', 3)
+    if len(parts) < 3 or parts[0] != '' or parts[1] != 'api':
+        return False
+    app_id = parts[2]
+    if not APP_ID_RE.match(app_id):
+        return False
+    module = _load_plugin(app_id)
+    if module is None:
+        return False
+    routes = getattr(module, 'ROUTES', {})
+    fn_name = routes.get((method, path))
+    if not fn_name:
+        return False
+    fn = getattr(module, fn_name, None)
+    if not callable(fn):
+        return False
+    try:
+        fn(handler)
+    except Exception as exc:
+        try:
+            handler.send_json(500, {'ok': False, 'error': 'plugin_error', 'message': str(exc)})
+        except Exception:
+            pass
+    return True
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -133,6 +303,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             # zovu "AI Zdravo Dashboard"), pa sam po sebi ne dokazuje
             # da je riječ o istoj instanci.
             self.send_json(200, {'base_dir': str(BASE_DIR.resolve())})
+            return
+        if _dispatch_plugin_route(self, 'GET', path):
             return
         if path != '/api/state':
             return super().do_GET()
@@ -229,11 +401,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if path == '/api/log-error':
             self.handle_log_error()
             return
-        if path == '/api/video-kompresor/compress':
-            self.handle_video_compress()
-            return
         if path == '/api/apps/delete':
             self.handle_delete_app()
+            return
+        if _dispatch_plugin_route(self, 'POST', path):
             return
         self.send_response(404)
         self.end_headers()
@@ -263,141 +434,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             pass  # rotacija je higijena - njen pad ne smije srusiti logovanje
         self.send_response(204)
         self.end_headers()
-
-    def handle_video_compress(self):
-        """apps/video-kompresor - prima sirov video bajt-tok (NE
-        multipart; ime fajla stiže kroz X-Filename header, tijelo
-        zahtjeva je fajl 1:1), kompresuje preko ffmpeg-a i upisuje
-        rezultat direktno u ~/Desktop korisnika. Prati
-        APPS_AND_WIDGETS.md pravilo 2 (server je opcion, mora
-        degradirati čisto - poruka, ne rušenje) za slučajeve bez
-        ffmpeg-a ili sa prevelikim/praznim fajlom."""
-        ffmpeg_path = shutil.which('ffmpeg')
-        if not ffmpeg_path:
-            self.send_json(503, {
-                'ok': False,
-                'error': 'ffmpeg_missing',
-                'message': 'ffmpeg nije instaliran na ovoj mašini (npr. brew install ffmpeg).',
-            })
-            return
-
-        length = int(self.headers.get('Content-Length', 0) or 0)
-        if length <= 0:
-            self.send_json(400, {'ok': False, 'error': 'empty_body', 'message': 'Prazan fajl.'})
-            return
-        if length > MAX_VIDEO_UPLOAD_BYTES:
-            self.send_json(413, {
-                'ok': False,
-                'error': 'file_too_large',
-                'message': f'Fajl je veći od {MAX_VIDEO_UPLOAD_BYTES // (1024 * 1024)}MB limita.',
-            })
-            return
-
-        raw_name = self.headers.get('X-Filename', 'video')
-        try:
-            original_name = unquote(raw_name)
-        except Exception:
-            original_name = 'video'
-        original_name = os.path.basename(original_name) or 'video'
-        stem = Path(original_name).stem or 'video'
-        suffix = Path(original_name).suffix or '.mp4'
-
-        # Upload se piše na disk u komadima (ne u memoriju) - video
-        # fajlovi lako pređu par stotina MB, isti princip kao
-        # engineering-under-constraint pravilo (streamuj, ne drži sve
-        # odjednom u RAM-u).
-        tmp_input = Path(tempfile.gettempdir()) / f'aizdravo-vk-{os.getpid()}-{threading.get_ident()}{suffix}'
-        written = 0
-        try:
-            with tmp_input.open('wb') as f:
-                remaining = length
-                while remaining > 0:
-                    chunk = self.rfile.read(min(1024 * 1024, remaining))
-                    if not chunk:
-                        break
-                    f.write(chunk)
-                    written += len(chunk)
-                    remaining -= len(chunk)
-        except OSError as exc:
-            tmp_input.unlink(missing_ok=True)
-            self.send_json(500, {'ok': False, 'error': 'upload_failed', 'message': str(exc)})
-            return
-
-        if written != length:
-            tmp_input.unlink(missing_ok=True)
-            self.send_json(400, {'ok': False, 'error': 'incomplete_upload', 'message': 'Upload je prekinut.'})
-            return
-
-        desktop = Path.home() / 'Desktop'
-        try:
-            desktop.mkdir(parents=True, exist_ok=True)
-        except OSError:
-            pass
-
-        # 27.7.2026 (Codex QA) - ffmpeg piše DIREKTNO u jedinstven privremen
-        # fajl (isti pid+thread-id obrazac kao tmp_input), ne u konačno
-        # Desktop ime. Stari kod je birao Desktop ime PRIJE kompresije
-        # (check-then-use race - dva paralelna uploada istog imena mogu
-        # izabrati isti slobodan naziv, pa jedan ffmpeg (-y) prepiše izlaz
-        # drugog) i ostavljao polovičan fajl na Desktopu ako ffmpeg padne.
-        # Sad se konačno ime bira i fajl premješta TEK poslije potvrđenog
-        # uspjeha - preostali race prozor (provjera slobodnog imena do
-        # rename-a) je trenutna operacija, ne višeminutna kompresija.
-        tmp_output = Path(tempfile.gettempdir()) / f'aizdravo-vk-out-{os.getpid()}-{threading.get_ident()}.mp4'
-
-        # preset veryfast/crf 26 - widget prioritizuje brzinu ("odmah
-        # krene kompresovanje") nad maksimalnom uštedom; vidi
-        # video-output-compression.md, konkretne vrijednosti smiju
-        # varirati po alatu.
-        cmd = [
-            ffmpeg_path, '-y', '-nostdin', '-i', str(tmp_input),
-            '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '26',
-            '-c:a', 'aac', '-b:a', '128k',
-            '-movflags', '+faststart',
-            str(tmp_output),
-        ]
-        result = None
-        try:
-            result = subprocess.run(cmd, capture_output=True, timeout=1800)
-        except subprocess.TimeoutExpired:
-            self.send_json(504, {'ok': False, 'error': 'timeout', 'message': 'Kompresija je predugo trajala.'})
-            return
-        finally:
-            tmp_input.unlink(missing_ok=True)
-            if result is None or result.returncode != 0:
-                tmp_output.unlink(missing_ok=True)
-
-        if result.returncode != 0 or not tmp_output.exists():
-            detail = result.stderr.decode('utf-8', errors='ignore')[-400:] if result.stderr else ''
-            tmp_output.unlink(missing_ok=True)
-            self.send_json(500, {
-                'ok': False,
-                'error': 'ffmpeg_failed',
-                'message': 'ffmpeg nije uspio da kompresuje fajl.',
-                'detail': detail,
-            })
-            return
-
-        output_name = f'{stem}-kompresovano.mp4'
-        output_path = desktop / output_name
-        counter = 2
-        while output_path.exists():
-            output_name = f'{stem}-kompresovano-{counter}.mp4'
-            output_path = desktop / output_name
-            counter += 1
-        try:
-            os.replace(tmp_output, output_path)
-        except OSError as exc:
-            tmp_output.unlink(missing_ok=True)
-            self.send_json(500, {'ok': False, 'error': 'move_failed', 'message': str(exc)})
-            return
-
-        self.send_json(200, {
-            'ok': True,
-            'output_name': output_name,
-            'input_size': written,
-            'output_size': output_path.stat().st_size,
-        })
 
     def handle_delete_app(self):
         """Katalog "Ukloni trajno" (27.7.2026) - suprotno od stare 'Ukloni'
@@ -466,6 +502,7 @@ def _cleanup_pidfile():
 def _handle_sigterm(signum, frame):
     # Podrazumijevani SIGTERM handler NE poziva atexit/cleanup - registrujemo
     # svoj da --stop (koji šalje SIGTERM) ostavi čist pid fajl iza sebe.
+    _run_plugin_shutdown_hooks()
     _cleanup_pidfile()
     sys.exit(0)
 
@@ -567,6 +604,7 @@ def main():
     try:
         server.serve_forever()
     except KeyboardInterrupt:
+        _run_plugin_shutdown_hooks()
         print('\nDashboard zaustavljen.')
 
 

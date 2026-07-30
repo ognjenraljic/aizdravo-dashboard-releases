@@ -98,7 +98,22 @@ Greška u tuđem listeneru se guta uz `console.warn` — pokvaren slušalac ne o
 ### Pravila kojih se svaki alat drži
 
 1. **Bez eksternih zavisnosti** (CDN skripte, fontovi) — alat mora raditi offline i pod file://.
-2. **Server je opcion.** Ako alat treba server endpoint (npr. ffmpeg), mora imati jasno degradirano ponašanje bez servera (poruka, ne rušenje). Ako alat zavisi od EKSTERNOG programa na korisnikovoj mašini (ffmpeg, neki drugi CLI alat) koji server samo pretpostavlja da postoji, ne čekaj da korisnik to sazna tek kad mu prvi pokušaj padne poslije cijelog uploada/posla — dodaj server endpoint koji provjerava dostupnost (npr. `shutil.which(...)`) i pozovi ga ČIM se `widget()`/`app()` učita, prije bilo koje korisnikove akcije, sa jasnom porukom + tačnom instalacionom komandom za OS na kom server radi (vidi `apps/video-kompresor/app.js` `vkCheckFfmpegStatus()` + `handle_video_status` u `server.py` kao referentni obrazac). Ako alat treba server dio uopšte (bilo koja nova ruta/handler u `server.py`, ne samo ova provjera), dodaj i `apps/<id>/SERVER-SETUP.md` po istom obrascu — standardni instalacioni prompt niže kopira samo `app.js` + jednu script liniju, pa ništa što zahtijeva izmjenu u `server.py` neće raditi bez eksplicitnog uputstva agentu koji instalira.
+2. **Server je opcion — i ako treba, ide preko sopstvenog plugin fajla, NIKAD ručnim uređivanjem core `server.py`.** Ako alat treba server endpoint (npr. ffmpeg), mora imati jasno degradirano ponašanje bez servera (poruka, ne rušenje). Alat koji treba server dio nosi `apps/<id>/server_ext.py` — core `server.py` ga sam otkrije i učita LIJENO, čim stigne prvi zahtjev na neku njegovu rutu (ne samo pri startu servera), pa instalacija radi i dok je dashboard već pokrenut, bez restarta. Format:
+   ```python
+   ROUTES = {
+       ('GET', '/api/<id>/status'): 'handle_status',
+       ('POST', '/api/<id>/compress'): 'handle_compress',
+   }
+
+   def handle_status(handler):
+       handler.send_json(200, {...})   # handler = živa Handler instanca:
+                                        # send_json/read_json_body/rfile/
+                                        # wfile/headers/path su njene metode
+
+   aizdravo.register_shutdown_hook(neka_funkcija)  # opciono, samo ako alat
+                                                     # drži pozadinske procese
+   ```
+   `aizdravo` (injektovan od core-a prije exec-a fajla) daje pristup dijeljenim utility-jima: `aizdravo.BASE_DIR`, `aizdravo.resolve_desktop_dir()` (Windows/OneDrive-svjesna Desktop putanja), `aizdravo.safe_popen_kwargs()` (siguran stdin/process-grupa za subprocess), `aizdravo.register_shutdown_hook(fn)`. Punu referencu vidi `apps/video-kompresor/server_ext.py`. Ako alat zavisi od EKSTERNOG programa na korisnikovoj mašini (ffmpeg, neki drugi CLI alat), dodaj rutu koja provjerava dostupnost (`shutil.which(...)`) i pozovi je ČIM se `widget()`/`app()` učita — vidi `vkCheckFfmpegStatus()` u `apps/video-kompresor/app.js` + `handle_status` u istom `server_ext.py` kao referentni obrazac.
 3. **Nikad ne diraj tuđe podatke** — samo `ctx.storage`, nikad direktni `localStorage` ključevi.
 4. **Greška alata ne smije srušiti dashboard** — host ionako hvata izuzetke iz `widget()`/`app()` i prikaže poruku unutar kartice/taba, ali alat treba i sam biti defanzivan.
 5. **Prefiksuj SVE svoje identifikatore po alatu** — CSS klase (`qn-...`), DOM id-jeve ako ih uopšte koristiš (bolje `el.querySelector` po klasi nego `getElementById`), i imena bus događaja (`<app-id>:<naziv>`). Dva alata bez prefiksa mogu tiho pokvariti jedan drugog.
