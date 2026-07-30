@@ -139,6 +139,18 @@ Widget sekcija čiji alat više nije prisutan (obrisana script linija) prikazuje
 
 Widget instance ostavljene na boardu poslije brisanja prikazuju "Alat nije dostupan" (vidi gore) dok se alat eventualno ne instalira ponovo.
 
+## Prenosivost — šta alat mora zadovoljiti da radi na DRUGOM dashboardu
+
+"Učitaj alat" (katalog → dugme dole) i ručno prevlačenje foldera oba rade isto: kopiraju TAČNO ono što je u `apps/<id>/` na disku, ništa pametnije od toga. Ako folder ne zadovoljava ovo ispod, alat se ili neće prepoznati, ili će se instalirati a onda tiho pucati na ciljnom dashboardu. Checklist prije nego se alat proglasi gotovim za distribuciju (drugi dashboard, drugi računar, druga epizoda):
+
+1. **`app.js` mora biti DIREKTNO u korijenu foldera koji se dijeli** (`apps/<id>/app.js`), ne u podfolderu. "Učitaj alat" traži tačno `<izabrani-folder>/app.js` — ako je dublje, ne prepoznaje alat.
+2. **Folder mora biti potpuno samodovoljan** — sve što `app.js` referencira (biblioteke, slike, JSON podaci, `server_ext.py`) mora fizički živjeti UNUTAR istog `apps/<id>/` foldera i biti referencirano RELATIVNOM putanjom (`apps/<id>/nesto.js`), nikad apsolutnom putanjom sa ovog računara i nikad referenca na fajl iz NEKOG DRUGOG alata. Prije prijave gotovim, ugasi dashboard i obriši SVE OSIM tog jednog foldera u praznu probnu kopiju — ako i dalje radi, samodovoljan je. (Uzrok stvarnog bug-a 30.7.2026: pretpostavljena zavisnost `qrcode.lib.js` koja se pokazala nepostojećom/nepotrebnom u finalnoj verziji koda — provjeri da li je svaka referencirana zavisnost STVARNO i korištena i prisutna, ne poluostavljena od ranije verzije.)
+3. **`id` u manifestu treba da odgovara imenu foldera** (nije tehnički obavezno — instalacija čita `id` iz manifesta, ne iz imena foldera — ali neusklađeno ime zbunjuje i ljude i AI agenta koji kasnije ručno instalira preko prompta ispod).
+4. **`version` se MIJENJA pri svakoj stvarnoj izmjeni koda.** Ovo više nije samo dobra praksa — "Učitaj alat" upoređuje instaliranu i novu verziju da odluči da li da pita za zamjenu ili javi "već ažurno". Ista verzija = dashboard pretpostavlja identičan sadržaj i preskače reinstalaciju.
+5. **Server dio ide isključivo kroz `apps/<id>/server_ext.py`** (pravilo 2 iznad) — nikad pretpostavka da je nešto već ručno dodano u ciljni `server.py`. Ovo je JEDINI način da server-zavisan alat radi na drugom dashboardu bez AI posrednika.
+6. **`icon` mora biti ime tabler simbola koji VEĆ postoji u `index.html`** ciljnog dashboarda (core simbol set, vidi listu `<symbol id="icon-tabler-...">` u `index.html`) — ako alat treba ikonicu koje nema u trenutnom core setu, prvo je dodaj u core (isti obrazac kao `folder-plus` dodat 30.7.2026), ne pretpostavljaj da će se ikonica "nekako" prikazati na dashboardu koji nema taj simbol.
+7. **`ctx.storage`, nikad direktan `localStorage` ključ** (pravilo 3 iznad) — ovo automatski znači da se alat na NOVOM dashboardu učitava sa praznim/default stanjem, ne vuče tuđe podatke. Ne testiraj alat tako što ručno upisuješ test-vrijednost direktno preko `ctx.storage.set`/`localStorage` u živoj sesiji koja se ne briše prije distribucije — testni podatak zna otići u `dashboard-state.json` (server-side sinhronizacija) i preseliti se SA folderom na sledeći dashboard.
+
 ## Instalacioni prompt (kopiraj u opis videa)
 
 Šablon koji gledalac zalijepi u Claude Code / Codex otvoren u svom dashboard folderu. Zamijeni `<APP-ID>` i `<LINK-DO-FAJLA>`:

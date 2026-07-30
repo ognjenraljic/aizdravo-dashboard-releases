@@ -2347,6 +2347,38 @@ select:focus-visible {
 .app-tile:hover { transform: translateY(-2px); }
 .app-tile:hover .app-icon-tile { box-shadow: 0 6px 14px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.16); }
 .app-tile:active { transform: translateY(0) scale(.94); }
+
+/* Standard "glass" tooltip (30.7.2026) - izvučeno iz video-kompresor
+   info-icon tooltipa (apps/video-kompresor/app.js .vk-app-tooltip), sad
+   dashboard-wide standard za bilo koji hover tooltip bogatiji od native
+   title="..." (koji izgleda kao svaki drugi OS tooltip, ne prati temu).
+   JS-pozicioniran (position:fixed + JS top/left preko showAizTooltip u
+   app.js), NE čist CSS position:absolute vezan za host - alat je
+   izvorno radio dobro jer nema scroll-ujućeg pretka, ali katalog
+   (.apps-grid, overflow-y:auto) siječe apsolutno pozicioniran tooltip
+   čim iskoči iznad vidljivog scroll opsega. Jedan dijeljen element u
+   document.body (van SVAKOG mogućeg overflow konteksta) - host elementi
+   samo nose .aiz-tooltip-host + data-aiz-tooltip atribut, ne sadrže
+   sami tooltip DOM. */
+.aiz-tooltip {
+  position: fixed; top: 0; left: 0;
+  min-width: 160px; max-width: 260px; padding: 10px 12px; border-radius: 10px;
+  background: linear-gradient(160deg, rgba(var(--accent-rgb),.32), rgba(var(--accent-rgb),.05)), rgba(15,15,15,.78);
+  backdrop-filter: blur(14px) saturate(1.6); -webkit-backdrop-filter: blur(14px) saturate(1.6);
+  border: 1px solid rgba(var(--accent-rgb),.4); color: #fff; font: 500 11.5px/1.5 "Inter", sans-serif;
+  text-align: left; text-transform: none; letter-spacing: normal;
+  opacity: 0; visibility: hidden; pointer-events: none; z-index: 9999;
+  transition: opacity .15s ease, transform .15s ease, visibility .15s;
+  box-shadow: 0 10px 28px rgba(0,0,0,.4);
+  transform: translateY(4px);
+}
+.aiz-tooltip.is-visible { opacity: 1; visibility: visible; transform: translateY(0); }
+.aiz-tooltip::after {
+  content: ''; position: absolute; left: var(--aiz-tooltip-arrow-left, 20px); transform: translateX(-50%);
+  border: 6px solid transparent;
+}
+.aiz-tooltip:not(.aiz-tooltip--below)::after { top: 100%; border-top-color: rgba(15,15,15,.78); }
+.aiz-tooltip--below::after { bottom: 100%; border-bottom-color: rgba(15,15,15,.78); }
 .app-tile-name {
   max-width: 100%;
   overflow: hidden;

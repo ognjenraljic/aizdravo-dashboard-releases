@@ -101,6 +101,65 @@
     if (event.target === confirmOverlay) closeConfirmation(false);
   });
 
+  // Standard "glass" tooltip (30.7.2026, izvučen iz video-kompresor info-
+  // ikonice, sad dashboard-wide standard). JS-pozicioniran, NE čist CSS
+  // position:absolute - alat je izvorno radio dobro jer nije imao scroll-
+  // ujućeg pretka, ali katalog (.apps-grid, overflow-y:auto) siječe
+  // apsolutno pozicioniran tooltip čim iskoči iznad vidljivog scroll
+  // opsega. Jedan dijeljen element u document.body (van SVAKOG mogućeg
+  // overflow konteksta), pozicioniran preko getBoundingClientRect() na
+  // hover/focus bilo kog elementa sa .aiz-tooltip-host klasom + data-aiz-
+  // tooltip atributom (tekst ide kroz dataset/textContent, nikad
+  // innerHTML - tooltip sadržaj često dolazi iz alatovog manifesta, ne
+  // treba mu vjerovati kao HTML-bezbjednom).
+  let aizTooltipEl = null;
+  function ensureAizTooltip() {
+    if (!aizTooltipEl) {
+      aizTooltipEl = document.createElement('div');
+      aizTooltipEl.className = 'aiz-tooltip';
+      document.body.appendChild(aizTooltipEl);
+    }
+    return aizTooltipEl;
+  }
+  function showAizTooltip(host) {
+    const text = host.dataset.aizTooltip;
+    if (!text) return;
+    const tip = ensureAizTooltip();
+    tip.textContent = text;
+    tip.classList.add('is-visible');
+    const hostRect = host.getBoundingClientRect();
+    const tipRect = tip.getBoundingClientRect();
+    let left = hostRect.left + hostRect.width / 2 - tipRect.width / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - tipRect.width - 8));
+    let top = hostRect.top - tipRect.height - 9;
+    let below = false;
+    if (top < 8) { top = hostRect.bottom + 9; below = true; }
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+    tip.classList.toggle('aiz-tooltip--below', below);
+    const arrowLeft = Math.max(10, Math.min(tipRect.width - 10, (hostRect.left + hostRect.width / 2) - left));
+    tip.style.setProperty('--aiz-tooltip-arrow-left', arrowLeft + 'px');
+  }
+  function hideAizTooltip() {
+    if (aizTooltipEl) aizTooltipEl.classList.remove('is-visible');
+  }
+  document.addEventListener('mouseover', event => {
+    const host = event.target.closest('.aiz-tooltip-host');
+    if (host) showAizTooltip(host);
+  });
+  document.addEventListener('mouseout', event => {
+    const host = event.target.closest('.aiz-tooltip-host');
+    if (host && !host.contains(event.relatedTarget)) hideAizTooltip();
+  });
+  document.addEventListener('focusin', event => {
+    const host = event.target.closest('.aiz-tooltip-host');
+    if (host) showAizTooltip(host);
+  });
+  document.addEventListener('focusout', event => {
+    const host = event.target.closest('.aiz-tooltip-host');
+    if (host) hideAizTooltip();
+  });
+
   function collectDashboardState() {
     const values = {};
     try {
@@ -1114,12 +1173,15 @@
           // cijelog tila. Klik otvara aplikaciju, isto ponašanje kao prije.
           const tile = document.createElement('button');
           tile.type = 'button';
-          tile.className = 'app-tile';
-          tile.title = app.name + ' — ' + app.description;
+          tile.className = 'app-tile aiz-tooltip-host';
           tile.innerHTML =
             '<span class="app-icon-tile app-icon-tile--md"><svg><use href="#icon-tabler-' + safeIconName(app.icon) + '"></use></svg></span>' +
             '<span class="app-tile-name"></span>';
           tile.querySelector('.app-tile-name').textContent = app.name;
+          // dataset (ne innerHTML) - app.name/description dolaze iz alatovog
+          // manifesta, nikad ne treba vjerovati da su HTML-bezbjedni; portal
+          // tooltip mehanizam (vidi showAizTooltip) čita ovaj atribut.
+          tile.dataset.aizTooltip = app.name + ' — ' + app.description;
           tile.addEventListener('click', () => openAppTabGlobal(app.id));
           content.appendChild(tile);
         });
@@ -3305,12 +3367,12 @@
           tile.className = 'app-tile apps-catalog-tile';
           const header = document.createElement('button');
           header.type = 'button';
-          header.className = 'app-tile-header';
-          header.title = app.name + ' — v' + app.version + ' — ' + app.description;
+          header.className = 'app-tile-header aiz-tooltip-host';
           header.innerHTML =
             '<span class="app-icon-tile app-icon-tile--lg"><svg><use href="#icon-tabler-' + safeIconName(app.icon) + '"></use></svg></span>' +
             '<span class="app-tile-name"></span>';
           header.querySelector('.app-tile-name').textContent = app.name;
+          header.dataset.aizTooltip = app.name + ' — v' + app.version + ' — ' + app.description;
           header.addEventListener('click', () => {
             closeAppsPanel();
             openAppTab(app.id);
@@ -3354,12 +3416,12 @@
 
         const header = document.createElement('button');
         header.type = 'button';
-        header.className = 'app-tile-header';
-        header.title = app.name + ' — v' + app.version + ' — ' + app.description;
+        header.className = 'app-tile-header aiz-tooltip-host';
         header.innerHTML =
           '<span class="app-icon-tile app-icon-tile--sm"><svg><use href="#icon-tabler-' + safeIconName(app.icon) + '"></use></svg></span>' +
           '<span class="app-tile-name"></span>';
         header.querySelector('.app-tile-name').textContent = app.name;
+        header.dataset.aizTooltip = app.name + ' — v' + app.version + ' — ' + app.description;
         header.addEventListener('click', () => addWidgetToActiveTab(app, app.defaultSize));
         tile.appendChild(header);
         const deleteBtn = document.createElement('button');
