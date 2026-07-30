@@ -2503,6 +2503,27 @@ select:focus-visible {
   font-size: 11px;
 }
 
+/* "Učitaj alat" footer (30.7.2026) - uvijek vidljiv ispod kataloga (bilo
+   da ima ili nema instaliranih alata), direktna instalacija bez AI
+   posrednika preko folder-pickera. */
+.apps-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 14px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.apps-install-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.apps-install-btn svg { width: 16px; height: 16px; }
+.apps-install-hint { color: var(--text-faint); font-size: 11.5px; line-height: 1.4; }
+
 /* Sadržaj widget/folder kartice - puni .pcard-inner ispod headera,
    sopstveni scroll kad sadržaj ne stane. Ne dira resize edge ručke
    (one su siblings, apsolutno na ivicama, viši z-index). */

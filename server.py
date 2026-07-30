@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import urllib.request
 import webbrowser
 from datetime import datetime, timezone
@@ -42,6 +43,9 @@ MAX_ERROR_LINES = 200
 # oblik koji apps-core.js registerApp() zahtijeva, provjeren PRIJE
 # ijednog file-system poziva da putanja ne može pobjeći iz apps/.
 APP_ID_RE = re.compile(r'^[a-z0-9]+(-[a-z0-9]+)*$')
+# "Učitaj alat" (30.7.2026) - server-side cap po fajlu (odbrana u dubinu,
+# klijent već provjerava isto PRIJE upload-a).
+APP_INSTALL_MAX_FILE_BYTES = 50 * 1024 * 1024
 
 
 # --- Plugin sistem za server-zavisne alate (30.7.2026) ---
@@ -404,6 +408,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if path == '/api/apps/delete':
             self.handle_delete_app()
             return
+        if path == '/api/apps/install/begin':
+            self.handle_install_begin()
+            return
+        if path == '/api/apps/install/file':
+            self.handle_install_file()
+            return
+        if path == '/api/apps/install/finish':
+            self.handle_install_finish()
+            return
         if _dispatch_plugin_route(self, 'POST', path):
             return
         self.send_response(404)
@@ -490,6 +503,137 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             script_warning = str(exc)
 
         self.send_json(200, {'ok': True, 'warning': script_warning})
+
+    def handle_install_begin(self):
+        """"Učitaj alat" Korak 1 - napravi (ili očisti, ako je zamjena)
+        apps/<id>/ folder prije upload-a pojedinačnih fajlova."""
+        try:
+            payload = self.read_json_body(max_bytes=4096)
+        except Exception:
+            self.send_json(400, {'ok': False, 'error': 'bad_request'})
+            return
+        app_id = payload.get('id') if isinstance(payload, dict) else None
+        overwrite = bool(payload.get('overwrite')) if isinstance(payload, dict) else False
+        if not isinstance(app_id, str) or not APP_ID_RE.match(app_id):
+            self.send_json(400, {'ok': False, 'error': 'invalid_id', 'message': 'Nevažeći id alata.'})
+            return
+
+        apps_root = (BASE_DIR / 'apps').resolve()
+        app_dir = (apps_root / app_id).resolve()
+        if app_dir.parent != apps_root:
+            self.send_json(400, {'ok': False, 'error': 'invalid_path', 'message': 'Nevažeća putanja.'})
+            return
+
+        if app_dir.exists():
+            if not overwrite:
+                self.send_json(409, {'ok': False, 'error': 'already_exists', 'message': 'Alat sa ovim id-om već postoji.'})
+                return
+            try:
+                shutil.rmtree(app_dir)
+            except OSError as exc:
+                self.send_json(500, {'ok': False, 'error': 'cleanup_failed', 'message': str(exc)})
+                return
+
+        try:
+            app_dir.mkdir(parents=True)
+        except OSError as exc:
+            self.send_json(500, {'ok': False, 'error': 'mkdir_failed', 'message': str(exc)})
+            return
+
+        self.send_json(200, {'ok': True})
+
+    def handle_install_file(self):
+        """"Učitaj alat" Korak 2 - upiši JEDAN fajl iz izabranog foldera.
+        Poziva se jednom po fajlu (isti sirov upload obrazac kao video-
+        kompresor: X-header + tijelo = fajl 1:1, ne multipart) - server.py
+        ne treba multipart parser samo zbog ovoga."""
+        app_id = self.headers.get('X-App-Id', '')
+        if not APP_ID_RE.match(app_id):
+            self.send_json(400, {'ok': False, 'error': 'invalid_id'})
+            return
+        apps_root = (BASE_DIR / 'apps').resolve()
+        app_dir = (apps_root / app_id).resolve()
+        if app_dir.parent != apps_root or not app_dir.is_dir():
+            self.send_json(400, {'ok': False, 'error': 'not_begun', 'message': 'Pozovi /install/begin prvo.'})
+            return
+
+        raw_rel = self.headers.get('X-Relative-Path', '')
+        try:
+            rel_path = unquote(raw_rel)
+        except Exception:
+            rel_path = ''
+        if not rel_path:
+            self.send_json(400, {'ok': False, 'error': 'missing_path'})
+            return
+        target = (app_dir / rel_path).resolve()
+        try:
+            target.relative_to(app_dir)
+        except ValueError:
+            self.send_json(400, {'ok': False, 'error': 'invalid_path', 'message': 'Putanja bježi iz foldera alata.'})
+            return
+
+        length = int(self.headers.get('Content-Length', 0) or 0)
+        if length < 0 or length > APP_INSTALL_MAX_FILE_BYTES:
+            self.send_json(413, {'ok': False, 'error': 'file_too_large'})
+            return
+
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with target.open('wb') as f:
+                remaining = length
+                while remaining > 0:
+                    chunk = self.rfile.read(min(1024 * 1024, remaining))
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    remaining -= len(chunk)
+        except OSError as exc:
+            self.send_json(500, {'ok': False, 'error': 'write_failed', 'message': str(exc)})
+            return
+
+        self.send_json(200, {'ok': True})
+
+    def handle_install_finish(self):
+        """"Učitaj alat" Korak 3 - upiši (ili zamijeni) script liniju u
+        index.html TEK poslije što su svi fajlovi uspješno stigli. Nikad
+        ne prepisuje cijeli fajl, samo tu jednu liniju unutar APLIKACIJE
+        bloka (isti princip kao update-dashboard-ov index.html merge)."""
+        try:
+            payload = self.read_json_body(max_bytes=4096)
+        except Exception:
+            self.send_json(400, {'ok': False, 'error': 'bad_request'})
+            return
+        app_id = payload.get('id') if isinstance(payload, dict) else None
+        if not isinstance(app_id, str) or not APP_ID_RE.match(app_id):
+            self.send_json(400, {'ok': False, 'error': 'invalid_id'})
+            return
+
+        apps_root = (BASE_DIR / 'apps').resolve()
+        app_js = (apps_root / app_id / 'app.js').resolve()
+        if app_js.parent.parent != apps_root or not app_js.is_file():
+            self.send_json(400, {'ok': False, 'error': 'app_js_missing', 'message': 'app.js nije pronađen - upload nije završen.'})
+            return
+
+        script_version = int(time.time())
+        try:
+            index_path = BASE_DIR / 'index.html'
+            content = index_path.read_text(encoding='utf-8')
+            pattern = re.compile(
+                r'[ \t]*<script src="apps/' + re.escape(app_id) + r'/app\.js(\?v=\d+)?"></script>\r?\n?'
+            )
+            content = pattern.sub('', content)
+            marker = '<!-- =================== KRAJ APLIKACIJA ========================== -->'
+            new_line = f'<script src="apps/{app_id}/app.js?v={script_version}"></script>\n'
+            if marker not in content:
+                self.send_json(500, {'ok': False, 'error': 'marker_missing', 'message': 'index.html nema APLIKACIJE blok marker.'})
+                return
+            content = content.replace(marker, new_line + marker, 1)
+            index_path.write_text(content, encoding='utf-8')
+        except OSError as exc:
+            self.send_json(500, {'ok': False, 'error': 'index_write_failed', 'message': str(exc)})
+            return
+
+        self.send_json(200, {'ok': True, 'script_version': script_version})
 
 
 def _cleanup_pidfile():

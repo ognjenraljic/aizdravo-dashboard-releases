@@ -1921,6 +1921,8 @@
   const appsModeWidgets = document.getElementById('appsModeWidgets');
   const appsGrid = document.getElementById('appsGrid');
   const appsEmpty = document.getElementById('appsEmpty');
+  const appsInstallBtn = document.getElementById('appsInstallBtn');
+  const appsInstallInput = document.getElementById('appsInstallInput');
   const fabOpenApps = document.getElementById('fabOpenApps');
   const modalTypeField = document.getElementById('modalTypeField');
   const sectionTypeButtons = Array.from(document.querySelectorAll('.section-type-btn'));
@@ -3575,6 +3577,147 @@
       renderAppsGrid();
       renderInstalledApps();
       showToast('„' + app.name + '“ je trajno obrisan.');
+    }
+
+    // "Učitaj alat" (30.7.2026) - direktna instalacija apps/<id>/ foldera
+    // preko folder-pickera (webkitdirectory), bez AI posrednika. Radi za
+    // BILO KOJI alat - i widget-only, i onaj sa server_ext.py (server dio
+    // se sam lijeno učita čim server dobije prvi zahtjev na njegovu rutu,
+    // vidi plugin sistem u server.py).
+    const APP_INSTALL_MAX_FILE_BYTES = 50 * 1024 * 1024;
+
+    function parseAppManifestFromSource(source) {
+      // Regex, ne pravi JS parser - dovoljno za kontrolisan registerApp()
+      // oblik iz APPS_AND_WIDGETS.md kontrakta.
+      const idMatch = source.match(/\bid\s*:\s*['"]([a-z0-9]+(?:-[a-z0-9]+)*)['"]/);
+      const nameMatch = source.match(/\bname\s*:\s*['"]([^'"]{1,60})['"]/);
+      const versionMatch = source.match(/\bversion\s*:\s*['"]([^'"]{1,20})['"]/);
+      if (!idMatch) return null;
+      return {
+        id: idMatch[1],
+        name: nameMatch ? nameMatch[1] : idMatch[1],
+        version: versionMatch ? versionMatch[1] : '0.0.0',
+      };
+    }
+
+    async function installAppFromFolder(fileList) {
+      const files = Array.from(fileList);
+      if (!files.length) return;
+      // webkitRelativePath oblika "folder-ime/app.js" - skini prvi
+      // segment (folder ime korisnik bira, ne mora odgovarati id-u alata
+      // - id dolazi iz samog manifesta, izvor istine).
+      const firstSlash = files[0].webkitRelativePath.indexOf('/');
+      const topFolder = firstSlash === -1 ? '' : files[0].webkitRelativePath.slice(0, firstSlash);
+
+      const appJsFile = files.find(f => f.webkitRelativePath === (topFolder ? topFolder + '/app.js' : 'app.js'));
+      if (!appJsFile) {
+        showToast('Izabrani folder nema app.js - nije validan alat.');
+        return;
+      }
+      const source = await appJsFile.text();
+      const manifest = parseAppManifestFromSource(source);
+      if (!manifest) {
+        showToast('Nisam prepoznala id alata u app.js - provjeri da folder ima ispravan registerApp() poziv.');
+        return;
+      }
+
+      const existing = window.AIZdravo ? AIZdravo.getApp(manifest.id) : null;
+      let overwrite = false;
+      if (existing) {
+        if (existing.version === manifest.version) {
+          showToast('„' + manifest.name + '“ (v' + manifest.version + ') je već instaliran - ništa nije promijenjeno.');
+          return;
+        }
+        const ok = await askConfirmation(
+          '„' + existing.name + '“ v' + existing.version + ' je već instaliran. Zamijeniti sa v' + manifest.version + '?',
+          appsInstallBtn
+        );
+        if (!ok) return;
+        overwrite = true;
+      } else {
+        const ok = await askConfirmation('Instalirati novi alat „' + manifest.name + '“ (v' + manifest.version + ')?', appsInstallBtn);
+        if (!ok) return;
+      }
+
+      const tooLarge = files.find(f => f.size > APP_INSTALL_MAX_FILE_BYTES);
+      if (tooLarge) {
+        showToast('Fajl „' + tooLarge.name + '“ je preveliki (max ' + Math.round(APP_INSTALL_MAX_FILE_BYTES / 1024 / 1024) + 'MB po fajlu u alatu).');
+        return;
+      }
+
+      showToast('Instaliram „' + manifest.name + '“...');
+      try {
+        const beginResp = await fetch('/api/apps/install/begin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: manifest.id, overwrite }),
+        });
+        const beginData = await beginResp.json().catch(() => null);
+        if (!beginResp.ok || !beginData || !beginData.ok) {
+          showToast('Instalacija nije uspjela: ' + ((beginData && beginData.message) || ('HTTP ' + beginResp.status)));
+          return;
+        }
+
+        for (const file of files) {
+          const relPath = topFolder ? file.webkitRelativePath.slice(topFolder.length + 1) : file.webkitRelativePath;
+          if (!relPath) continue;
+          const fileResp = await fetch('/api/apps/install/file', {
+            method: 'POST',
+            headers: {
+              'X-App-Id': manifest.id,
+              'X-Relative-Path': encodeURIComponent(relPath),
+              'Content-Type': 'application/octet-stream',
+            },
+            body: file,
+          });
+          const fileData = await fileResp.json().catch(() => null);
+          if (!fileResp.ok || !fileData || !fileData.ok) {
+            showToast('Instalacija nije uspjela na fajlu „' + relPath + '“: ' + ((fileData && fileData.message) || ('HTTP ' + fileResp.status)));
+            return;
+          }
+        }
+
+        const finishResp = await fetch('/api/apps/install/finish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: manifest.id }),
+        });
+        const finishData = await finishResp.json().catch(() => null);
+        if (!finishResp.ok || !finishData || !finishData.ok) {
+          showToast('Instalacija nije uspjela (index.html): ' + ((finishData && finishData.message) || ('HTTP ' + finishResp.status)));
+          return;
+        }
+
+        // Živa registracija bez reload-a: ako je zamjena, prvo skini
+        // staru registraciju (registerApp odbija duplikat id-a) i ukloni
+        // stari <script> element da ne ostane mrtva referenca.
+        if (overwrite && window.AIZdravo && AIZdravo.unregisterApp) {
+          AIZdravo.unregisterApp(manifest.id);
+          document.querySelectorAll('script[src^="apps/' + manifest.id + '/app.js"]').forEach(el => el.remove());
+        }
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'apps/' + manifest.id + '/app.js?v=' + finishData.script_version;
+          script.onload = resolve;
+          script.onerror = () => reject(new Error('script_load_failed'));
+          document.body.appendChild(script);
+        });
+
+        renderAppsGrid();
+        renderInstalledApps();
+        showToast('„' + manifest.name + '“ je instaliran.');
+      } catch (err) {
+        showToast('Instalacija nije uspjela: server nije dostupan.');
+      }
+    }
+
+    if (appsInstallBtn && appsInstallInput) {
+      appsInstallBtn.addEventListener('click', () => appsInstallInput.click());
+      appsInstallInput.addEventListener('change', () => {
+        const files = appsInstallInput.files;
+        appsInstallInput.value = '';
+        if (files && files.length) installAppFromFolder(files);
+      });
     }
 
     function renderInstalledApps() {
