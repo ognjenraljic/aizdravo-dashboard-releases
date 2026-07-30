@@ -1385,6 +1385,27 @@
             const sizeRow = menu.querySelector('.pcard-size-row');
             if (sizeRow) sizeRow.hidden = true;
           }
+          // Klik na naslov widget sekcije otvara punu aplikaciju u novom
+          // tabu, ako alat ima app() formu - isti mehanizam kao folder
+          // pločice i katalog "Aplikacije" prikaz (openAppTabGlobal), samo
+          // pozvan direktno iz widgeta na tabli. Widget-only alati (bez
+          // app forme) zadržavaju običan, neklikabilan naslov.
+          if (app && app.app) {
+            nameEl.classList.add('pcard-name--clickable');
+            nameEl.setAttribute('role', 'button');
+            nameEl.setAttribute('tabindex', '0');
+            nameEl.setAttribute('title', `Otvori „${app.name}“ kao aplikaciju`);
+            nameEl.addEventListener('click', (e) => {
+              e.stopPropagation();
+              openAppTabGlobal(card.dataset.appId);
+            });
+            nameEl.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openAppTabGlobal(card.dataset.appId);
+              }
+            });
+          }
         }
         // Poveži alat sa sekcijom (26.7.2026) - samo za praznu custom
         // sekciju (Ognjenov zahtjev: kad on napravi i podesi veličinu

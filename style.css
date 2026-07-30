@@ -2081,6 +2081,18 @@ select:focus-visible {
   font-size: 13px;
   line-height: 1;
 }
+/* Widget čiji alat ima i punu aplikaciju - klik na naslov je prečica do
+   nje (vidi makeEdgeResizable, "Klik na naslov widget sekcije..."). */
+.pcard-name--clickable {
+  cursor: pointer;
+  border-radius: 3px;
+  transition: color .12s ease;
+}
+.pcard-name--clickable:hover,
+.pcard-name--clickable:focus-visible {
+  color: var(--accent-highlight);
+  outline: none;
+}
 .pcard-menu-toggle {
   all: unset;
   width: 30px;
