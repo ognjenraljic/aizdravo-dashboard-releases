@@ -1787,7 +1787,16 @@
           // a pointerdown that actually landed on the delete button
           // shouldn't ALSO be interpreted as picking the card up to drag.
           filter: '.pcard-edge, .pcard-menu, .pcard-menu-toggle, .pcard-inner button, .pcard-inner input, .pcard-inner select, .pcard-inner textarea, .pcard-inner a',
-          preventOnFilter: true,
+          // false (30.7.2026 bug fix) - `filter` already stops Sortable
+          // from treating a pointerdown on these elements as a drag start;
+          // `preventOnFilter: true` (Sortable's default) ADDITIONALLY
+          // calls event.preventDefault() on that pointerdown, which also
+          // silently blocks the browser's native focus-on-click for any
+          // input/textarea/select/a inside a widget - discovered live via
+          // qr-generator's text input being completely untypable on a
+          // real placed widget (programmatic .focus() worked, real clicks
+          // did not - proved it was this option, not a widget-code bug).
+          preventOnFilter: false,
           // ghostClass marks the ORIGINAL element - it stays in the DOM
           // and IS what Sortable repositions live as the pointer moves
           // over other cards (that's the "everyone else shifts" effect).
