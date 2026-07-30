@@ -2088,8 +2088,8 @@ select:focus-visible {
   border-radius: 3px;
   transition: color .12s ease;
 }
-.pcard-name--clickable:hover,
-.pcard-name--clickable:focus-visible {
+.pcard-header .pcard-name.pcard-name--clickable:hover,
+.pcard-header .pcard-name.pcard-name--clickable:focus-visible {
   color: var(--accent-highlight);
   outline: none;
 }
