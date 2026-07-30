@@ -79,10 +79,16 @@
     if (resolver) resolver(result);
   }
 
-  function askConfirmation(message, trigger) {
+  function askConfirmation(message, trigger, danger = true) {
     if (!confirmOverlay || !confirmMessage || !confirmCancel || !confirmAccept) return Promise.resolve(false);
     confirmReturnFocus = trigger || document.activeElement;
     confirmMessage.textContent = message;
+    // danger=false (30.7.2026, "Učitaj alat") - dijeljeni dijalog je do
+    // sad UVIJEK bio crven (destruktivne akcije: brisanje sekcije/tab-a/
+    // alata). Instalacija/zamjena alata nije destruktivna - dugme prati
+    // akcentnu boju trenutne teme umjesto fiksnog crvenog.
+    confirmAccept.classList.toggle('modal-btn-danger', danger);
+    confirmAccept.classList.toggle('modal-btn-primary', !danger);
     confirmOverlay.classList.add('is-open');
     confirmOverlay.setAttribute('aria-hidden', 'false');
     requestAnimationFrame(() => confirmCancel.focus());
@@ -3630,12 +3636,13 @@
         }
         const ok = await askConfirmation(
           '„' + existing.name + '“ v' + existing.version + ' je već instaliran. Zamijeniti sa v' + manifest.version + '?',
-          appsInstallBtn
+          appsInstallBtn,
+          false
         );
         if (!ok) return;
         overwrite = true;
       } else {
-        const ok = await askConfirmation('Instalirati novi alat „' + manifest.name + '“ (v' + manifest.version + ')?', appsInstallBtn);
+        const ok = await askConfirmation('Instalirati novi alat „' + manifest.name + '“ (v' + manifest.version + ')?', appsInstallBtn, false);
         if (!ok) return;
       }
 
@@ -3714,9 +3721,14 @@
     if (appsInstallBtn && appsInstallInput) {
       appsInstallBtn.addEventListener('click', () => appsInstallInput.click());
       appsInstallInput.addEventListener('change', () => {
-        const files = appsInstallInput.files;
+        // Array.from KOPIRA fajlove u nezavisan niz - input.files je živa
+        // FileList referenca, i resetovanje input.value ispod je odmah
+        // isprazni (potvrđeno uživo: lenBefore 1 -> lenAfter 0 na ISTOJ
+        // referenci). Bez kopije, installAppFromFolder nikad ne bi ni
+        // pozvana (files.length bi već bio 0 u guard provjeri ispod).
+        const files = Array.from(appsInstallInput.files || []);
         appsInstallInput.value = '';
-        if (files && files.length) installAppFromFolder(files);
+        if (files.length) installAppFromFolder(files);
       });
     }
 
