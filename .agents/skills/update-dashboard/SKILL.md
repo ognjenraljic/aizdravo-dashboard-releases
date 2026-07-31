@@ -19,6 +19,10 @@ Uz `VERSION`, repo nosi i `MANIFEST.json` - `{"fajl/putanja": "sha256hex", ...}`
 
 Ako fetch na ovaj URL vrati 404 ili grešku (repo još ne postoji, ili nije public/nije dostupan bez auth-a) - javi korisniku jasno da update-izvor još nije podešen, ne pravi ništa, ne javljaj lažno "gotovo".
 
+### Alternativa - korisnik već ima lokalno raspakovan folder nove verzije
+
+Ako je korisnik SAM skinuo/raspakovao zip nove verzije (bilo odakle - GitHub Release, privatan link, itd.) i kaže nešto kao "primijeni update iz ovog foldera" ili "vidi šta je novo u toj verziji i primijeni kod nas" - ne treba nikakav fetch. `dashboard_updater.py` ima `--source-dir` umjesto `--source-url` (vidi Korak 2-5) koji radi IDENTIČNU `apply_update()` mehaniku (backup, SHA-256 provjera protiv `MANIFEST.json` UNUTAR tog lokalnog foldera, spajanje `index.html`, detekcija `server.py` customizacije) potpuno offline, bez ijednog mrežnog poziva. Provjeri samo da raspakovan folder stvarno ima `MANIFEST.json` i `VERSION` u root-u (svaki pravi release ih nosi) - ako ne, tretiraj kao nepouzdan izvor i pitaj korisnika da potvrdi da je zip kompletan.
+
 ## Korak 1 - Uporedi verzije
 
 1. Pročitaj lokalni `VERSION` fajl u root-u ovog foldera (ako ne postoji, tretiraj kao `0.0.0`).
@@ -35,8 +39,15 @@ cd <folder dashboarda>
 python3 tools/dashboard_updater.py . --source-url https://raw.githubusercontent.com/ognjenraljic/aizdravo-dashboard-releases/main
 ```
 
+Ili, za lokalni-folder slučaj iz "Alternativa" iznad (bez fetch-a):
+
+```bash
+cd <folder dashboarda>
+python3 tools/dashboard_updater.py . --source-dir <putanja do raspakovanog foldera nove verzije>
+```
+
 Skript sam radi sve ovo, u ovom redoslijedu:
-1. Fetch `MANIFEST.json` + svaki core fajl sa raw URL-a u privremeni staging folder.
+1. Fetch `MANIFEST.json` + svaki core fajl sa raw URL-a u privremeni staging folder (ili, kod `--source-dir`, čita ih direktno iz tog lokalnog foldera - nema fetch koraka).
 2. SHA-256 provjera svakog fajla protiv `MANIFEST.json` - ako ijedan ne odgovara, PREKIDA ODMAH, ništa lokalno se ne mijenja, javlja grešku.
 3. Backup CIJELOG trenutnog foldera u sibling folder (`../<ime-foldera>-backup-<YYYY-MM-DD-HHMM>/`).
 4. Spaja `index.html`: izdvaja korisnikove `<script src="apps/...">` registracije iz TRENUTNOG fajla i ubacuje ih u NOVI (core update nikad ne prepisuje instalirane alate).
