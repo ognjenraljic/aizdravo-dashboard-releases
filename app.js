@@ -368,6 +368,8 @@
   let refreshGridDots = () => {};
 
   const THEME_KEY = 'aizdravo:theme:v1';
+  const MODE_KEY = 'aizdravo:mode:v1';
+  let activeMode = 'dark';
   // Stara pojedinačna tema (do 27.7.2026, samo JEDNA sopstvena tema
   // podržana) - fajl se više ne piše, čita se samo jednom za migraciju
   // u CUSTOM_THEMES_KEY niže ako novi ključ još ne postoji.
@@ -391,7 +393,7 @@
   const CUSTOM_THEME_VARIABLES = [
     '--bg', '--card', '--border', '--accent', '--accent-hover',
     '--accent-highlight', '--accent-rgb', '--accent-glow-rgb',
-    '--accent-hue-rotate', '--accent-ink', '--text-soft', '--text-faint',
+    '--accent-hue-rotate', '--accent-ink', '--text', '--text-soft', '--text-faint',
     '--sidebar-bg', '--modal-bg', '--switch-bg', '--glass-start-rgb',
     '--glass-end-rgb', '--floating-rgb', '--floating-hover-rgb',
   ];
@@ -458,28 +460,39 @@
     return from.map((channel, index) => Math.round(channel + (to[index] - channel) * amount));
   }
 
-  function buildCustomPalette(accentValue) {
+  // Svijetli/tamni mod (31.7.2026) - ista formula, samo drugi lightness
+  // ciljevi. Umjesto rucno craftovanih svijetlih paleta po temi, SVAKA
+  // tema (6 ugradjenih + custom) generise svoj light mod iz iste --accent
+  // boje kroz istu HSL formulu, samo sa 'light' ciljevima ispod. Time se
+  // svijetli mod automatski poklapa sa identitetom teme umjesto da izgleda
+  // kao jedna univerzalna svijetla paleta nabijena preko svih boja.
+  function buildPalette(accentValue, mode) {
+    const isLight = mode === 'light';
     const accent = normalizeHex(accentValue);
     const accentRgb = hexToRgb(accent);
     const [hue, saturation] = rgbToHsl(accentRgb);
     const complementHue = (hue + 180) % 360;
     const backgroundSaturation = clamp(saturation * .22, 8, 24);
-    const bgRgb = hslToRgb(complementHue, backgroundSaturation, 6);
-    const sidebarRgb = hslToRgb(complementHue, backgroundSaturation + 2, 7.5);
-    const cardRgb = hslToRgb(complementHue, backgroundSaturation + 1, 11);
-    const borderRgb = hslToRgb(hue, clamp(saturation * .28, 12, 30), 21);
-    const modalRgb = hslToRgb(complementHue, backgroundSaturation + 1, 10);
-    const switchRgb = hslToRgb(hue, clamp(saturation * .3, 14, 32), 16);
-    const glassStartRgb = hslToRgb(complementHue, backgroundSaturation + 3, 16);
-    const floatingRgb = hslToRgb(complementHue, backgroundSaturation + 2, 12);
-    const floatingHoverRgb = hslToRgb(complementHue, backgroundSaturation + 4, 18);
-    const hoverRgb = mixRgb(accentRgb, [255, 255, 255], .16);
-    const highlightRgb = mixRgb(accentRgb, [255, 255, 255], .64);
+    const bgRgb = hslToRgb(complementHue, backgroundSaturation, isLight ? 96 : 6);
+    const sidebarRgb = hslToRgb(complementHue, backgroundSaturation + 2, isLight ? 93 : 7.5);
+    const cardRgb = hslToRgb(complementHue, backgroundSaturation + 1, isLight ? 99.5 : 11);
+    const borderRgb = hslToRgb(hue, clamp(saturation * .28, 12, 30), isLight ? 85 : 21);
+    const modalRgb = hslToRgb(complementHue, backgroundSaturation + 1, isLight ? 98 : 10);
+    const switchRgb = hslToRgb(hue, clamp(saturation * .3, 14, 32), isLight ? 88 : 16);
+    const glassStartRgb = hslToRgb(complementHue, backgroundSaturation + 3, isLight ? 90 : 16);
+    const floatingRgb = hslToRgb(complementHue, backgroundSaturation + 2, isLight ? 98 : 12);
+    const floatingHoverRgb = hslToRgb(complementHue, backgroundSaturation + 4, isLight ? 92 : 18);
+    // Dark: hover/highlight svijetle ka bijelom (dobro na tamnoj podlozi).
+    // Light: isto bi na bijeloj podlozi ispralo boju do necitljivosti, zato
+    // hover/highlight tamne ka crnom umjesto da svijetle.
+    const hoverRgb = mixRgb(accentRgb, isLight ? [0, 0, 0] : [255, 255, 255], isLight ? .14 : .16);
+    const highlightRgb = mixRgb(accentRgb, isLight ? [0, 0, 0] : [255, 255, 255], isLight ? .32 : .64);
     const glowRgb = mixRgb(accentRgb, [255, 255, 255], .3);
     const perceivedBrightness = accentRgb[0] * .299 + accentRgb[1] * .587 + accentRgb[2] * .114;
     const accentInk = perceivedBrightness > 155 ? rgbToHex(bgRgb) : '#ffffff';
-    const textSoftRgb = hslToRgb(complementHue, 10, 69);
-    const textFaintRgb = hslToRgb(complementHue, 10, 43);
+    const textSoftRgb = hslToRgb(complementHue, isLight ? 14 : 10, isLight ? 38 : 69);
+    const textFaintRgb = hslToRgb(complementHue, isLight ? 12 : 10, isLight ? 55 : 43);
+    const textRgb = hslToRgb(complementHue, isLight ? 18 : 0, isLight ? 14 : 100);
     const rgbString = rgb => rgb.join(', ');
     const variables = {
       '--bg': rgbToHex(bgRgb),
@@ -492,6 +505,7 @@
       '--accent-glow-rgb': rgbString(glowRgb),
       '--accent-hue-rotate': `${Math.round((hue - 33 + 360) % 360)}deg`,
       '--accent-ink': accentInk,
+      '--text': rgbToHex(textRgb),
       '--text-soft': rgbToHex(textSoftRgb),
       '--text-faint': rgbToHex(textFaintRgb),
       '--sidebar-bg': rgbToHex(sidebarRgb),
@@ -521,7 +535,7 @@
   }
 
   function applyCustomThemeVariables(theme) {
-    const palette = buildCustomPalette(theme.accent);
+    const palette = buildPalette(theme.accent, activeMode);
     Object.entries(palette.variables).forEach(([variable, value]) => {
       document.documentElement.style.setProperty(variable, value);
     });
@@ -599,6 +613,33 @@
     refreshGridDots();
   }
 
+  // Svijetli/tamni mod (31.7.2026) - nezavisan od boje teme. Ugradjene
+  // teme (6 + default) prate [data-mode="light"] static CSS blokove;
+  // custom tema se ponovo izracuna kroz buildPalette jer njena paleta
+  // zivi u JS-u, ne u CSS-u.
+  function setMode(mode, persist = true) {
+    activeMode = mode === 'light' ? 'light' : 'dark';
+    if (activeMode === 'light') {
+      document.documentElement.dataset.mode = 'light';
+    } else {
+      delete document.documentElement.dataset.mode;
+    }
+    const customId = activeTheme.startsWith('custom:') ? activeTheme.slice(7) : null;
+    const customMatch = customId ? findCustomTheme(customId) : null;
+    if (customMatch) applyCustomThemeVariables(customMatch);
+    const modeToggle = document.getElementById('modeToggle');
+    if (modeToggle) modeToggle.setAttribute('aria-checked', String(activeMode === 'light'));
+    if (persist) persistValue(MODE_KEY, activeMode);
+    refreshGridDots();
+  }
+
+  try {
+    activeMode = localStorage.getItem(MODE_KEY) === 'light' ? 'light' : 'dark';
+  } catch (err) {
+    activeMode = 'dark';
+  }
+  if (activeMode === 'light') document.documentElement.dataset.mode = 'light';
+
   customThemes = loadCustomThemes();
   try {
     activeTheme = localStorage.getItem(THEME_KEY) || 'ai-zdravo';
@@ -648,26 +689,6 @@
     });
     if (persist) persistValue(LAYOUT_LOCK_KEY, layoutLocked ? '1' : '0');
     showToast(layoutLocked ? 'Raspored je zaključan.' : 'Raspored je otključan.');
-  }
-
-  // Status čuvanja ("Sačuvano" gore desno) - opciono sakrivanje (27.7.2026,
-  // Ognjenov zahtjev). Isti obrazac kao layout-locked: klasa na <html>,
-  // CSS sakriva element, stanje se pamti preko persistValue.
-  const SAVE_STATUS_HIDDEN_KEY = 'aizdravo:save-status-hidden';
-  let saveStatusHidden = false;
-  try {
-    saveStatusHidden = localStorage.getItem(SAVE_STATUS_HIDDEN_KEY) === '1';
-  } catch (err) {
-    saveStatusHidden = false;
-  }
-  document.documentElement.classList.toggle('save-status-hidden', saveStatusHidden);
-
-  function setSaveStatusHidden(hidden, persist = true) {
-    saveStatusHidden = !!hidden;
-    document.documentElement.classList.toggle('save-status-hidden', saveStatusHidden);
-    const toggle = document.getElementById('saveStatusToggle');
-    if (toggle) toggle.setAttribute('aria-checked', String(!saveStatusHidden));
-    if (persist) persistValue(SAVE_STATUS_HIDDEN_KEY, saveStatusHidden ? '1' : '0');
   }
 
   // Phase offset (in px, always in (-GRID, 0]) that shifts the raw dot
@@ -1419,7 +1440,7 @@
             '<button type="button" data-card-action="rename">Preimenuj</button>' +
             '<button type="button" data-card-action="move">Premjesti u drugi tab</button>' +
             '<button type="button" data-card-action="duplicate">Dupliciraj</button>' +
-            '<button type="button" data-card-action="collapse">Sažmi sekciju</button>' +
+            '<button type="button" data-card-action="collapse">Smanji sekciju</button>' +
             '<button type="button" data-card-action="lock">Zaključaj sekciju</button>' +
             '<div class="pcard-size-row" aria-label="Veličina sekcije"><button type="button" data-size="s">S</button><button type="button" data-size="m">M</button><button type="button" data-size="l">L</button><button type="button" data-size="full">Puna</button></div>' +
             '<button type="button" class="danger" data-card-action="delete">Obriši sekciju</button>' +
@@ -1578,7 +1599,7 @@
           if (action === 'collapse') {
             const collapsed = !card.classList.contains('is-collapsed');
             card.classList.toggle('is-collapsed', collapsed);
-            button.textContent = collapsed ? 'Proširi sekciju' : 'Sažmi sekciju';
+            button.textContent = collapsed ? 'Proširi sekciju' : 'Smanji sekciju';
             saveLayout();
             refreshRightLimits();
             return;
@@ -1957,7 +1978,7 @@
   const settingsClose = document.getElementById('settingsClose');
   const gridToggle = document.getElementById('gridToggle');
   const layoutLockToggle = document.getElementById('layoutLockToggle');
-  const saveStatusToggle = document.getElementById('saveStatusToggle');
+  const modeToggle = document.getElementById('modeToggle');
   const resetDashboard = document.getElementById('resetDashboard');
   const settingsVersionEl = document.getElementById('settingsVersion');
   // 28.7.2026 - broj verzije se čita iz VERSION fajla umjesto da bude
@@ -2021,7 +2042,7 @@
   function syncGridToggle() {
     if (gridToggle) gridToggle.setAttribute('aria-checked', String(gridVisible));
     if (layoutLockToggle) layoutLockToggle.setAttribute('aria-checked', String(layoutLocked));
-    if (saveStatusToggle) saveStatusToggle.setAttribute('aria-checked', String(!saveStatusHidden));
+    if (modeToggle) modeToggle.setAttribute('aria-checked', String(activeMode === 'light'));
   }
 
   function setPalettePreview(element, palette, prefix) {
@@ -2071,7 +2092,7 @@
     if (!themeGrid) return;
     themeGrid.querySelectorAll('.theme-choice--custom').forEach(el => el.remove());
     customThemes.forEach(theme => {
-      const palette = buildCustomPalette(theme.accent);
+      const palette = buildPalette(theme.accent, 'dark');
       const choice = document.createElement('div');
       choice.className = 'theme-choice theme-choice--custom';
       choice.setAttribute('role', 'radio');
@@ -2098,8 +2119,8 @@
 
   function updateCustomThemePreview() {
     if (!customThemeAccent) return;
-    const palette = buildCustomPalette(customThemeAccent.value);
-    if (customThemeHex) customThemeHex.textContent = palette.accent;
+    const palette = buildPalette(customThemeAccent.value, activeMode);
+    if (customThemeHex) customThemeHex.value = palette.accent;
     setPalettePreview(customThemePreview, palette, 'custom-preview');
     if (customThemeSave) customThemeSave.disabled = !customThemeName || !customThemeName.value.trim();
   }
@@ -2164,7 +2185,7 @@
     });
   }
   if (layoutLockToggle) layoutLockToggle.addEventListener('click', () => setLayoutLocked(!layoutLocked));
-  if (saveStatusToggle) saveStatusToggle.addEventListener('click', () => setSaveStatusHidden(!saveStatusHidden));
+  if (modeToggle) modeToggle.addEventListener('click', () => setMode(activeMode === 'light' ? 'dark' : 'light'));
 
   if (resetDashboard) resetDashboard.addEventListener('click', async () => {
     const approved = await askConfirmation('Vratiti cijeli dashboard na početno stanje? Preporučujemo da prvo izvezeš backup.', resetDashboard);
@@ -2184,6 +2205,19 @@
   }
   if (customThemeName) customThemeName.addEventListener('input', updateCustomThemePreview);
   if (customThemeAccent) customThemeAccent.addEventListener('input', updateCustomThemePreview);
+  if (customThemeHex) {
+    // Rucni unos hex koda (31.7.2026) - dosad je ovo bio samo <output>, sad
+    // je editabilan input. Samo VALIDAN puni hex (3 ili 6 cifara, sa ili
+    // bez #) primjenjuje se na swatch - polutipkan unos (npr. "#d9") ostaje
+    // netaknut dok korisnik ne zavrsi, umjesto da se odmah prepise na
+    // fallback boju (normalizeHex bi inace tiho vratio narandzastu).
+    customThemeHex.addEventListener('input', () => {
+      const raw = customThemeHex.value.trim().replace(/^#/, '');
+      if (!/^[0-9a-f]{3}$/i.test(raw) && !/^[0-9a-f]{6}$/i.test(raw)) return;
+      customThemeAccent.value = normalizeHex(customThemeHex.value);
+      updateCustomThemePreview();
+    });
+  }
   if (customThemeCancel) customThemeCancel.addEventListener('click', () => setCustomThemeEditorOpen(false));
   if (customThemeDelete) {
     customThemeDelete.addEventListener('click', async () => {
@@ -2636,7 +2670,7 @@
         return;
       }
       const nameOk = addTabNameInput.value.trim().length > 0;
-      const nameOnlyMode = modalMode === 'add-section' || modalMode === 'edit-section' || modalMode === 'edit-welcome';
+      const nameOnlyMode = modalMode === 'add-section' || modalMode === 'edit-section' || modalMode === 'edit-welcome' || modalMode === 'edit-topbar';
       const iconOk = nameOnlyMode || !!selectedIcon;
       addTabConfirmBtn.disabled = !(nameOk && iconOk);
       if (modalHelp) {
@@ -2645,7 +2679,7 @@
         else if (modalMode === 'add-section' && selectedSectionType === 'folder') modalHelp.textContent = 'Folder pokreće izabrane aplikacije jednim klikom.';
         else if (modalMode === 'add-section' || modalMode === 'edit-section') modalHelp.textContent = 'Ime će biti prikazano u zaglavlju sekcije.';
         else if (modalMode === 'edit-welcome') modalHelp.textContent = 'AI Zdravo logo ostaje ikonica ovog uvodnog taba.';
-        else if (modalMode === 'edit-topbar') modalHelp.textContent = 'Ikonica i naziv "Dashboard" kartice na vrhu ekrana.';
+        else if (modalMode === 'edit-topbar') modalHelp.textContent = 'Naziv "Dashboard" kartice na vrhu ekrana.';
         else modalHelp.textContent = 'Ime i ikonicu možeš kasnije promijeniti.';
       }
     }
@@ -2674,8 +2708,8 @@
       modalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       modalMode = mode;
       editingTabId = mode === 'edit' || mode === 'edit-welcome' ? tabId : null;
-      const nameOnlyMode = mode === 'add-section' || mode === 'edit-section' || mode === 'edit-welcome' || mode === 'edit-folder';
-      selectedIcon = nameOnlyMode ? null : ((mode === 'edit' || mode === 'edit-topbar') ? currentIcon : null);
+      const nameOnlyMode = mode === 'add-section' || mode === 'edit-section' || mode === 'edit-welcome' || mode === 'edit-folder' || mode === 'edit-topbar';
+      selectedIcon = nameOnlyMode ? null : (mode === 'edit' ? currentIcon : null);
 
       addTabTitleEl.textContent = MODAL_TITLES[mode];
       modalIconFieldEl.classList.toggle('is-hidden', nameOnlyMode);
@@ -3605,7 +3639,7 @@
       if (traces.openTab) parts.push('otvoren tab');
       const tracesMsg = total ? ' Nestaće: ' + parts.join(', ') + '.' : '';
       const ok = await askConfirmation(
-        'Trajno obrisati „' + app.name + '“? Ovo briše apps/' + app.id + '/ sa diska i sve podatke alata - ne može se vratiti.' + tracesMsg,
+        'Trajno obrisati „' + app.name + '“? Alat nestaje iz kataloga i ne može se vratiti kroz dashboard (folder se arhivira na disku, ne prikazuje se više nigdje).' + tracesMsg,
         trigger
       );
       if (!ok) return;
@@ -3783,6 +3817,24 @@
 
         renderAppsGrid();
         renderInstalledApps();
+        // Zivo skidanje/ucitavanje skripte iznad mijenja SAMO registar i
+        // katalog - vec postavljena widget kartica na tabu je izgradjena
+        // od STARE skripte prije ovog trenutka i ostaje takva (stari DOM,
+        // stari event listeneri) dok se stranica stvarno ne osvjezi.
+        // Umjesto da se rizikuje tih re-mount (nesigurno da li svaki alat
+        // to podnosi cisto), samo oznaci karticu - Ognjenov zahtjev
+        // 31.7.2026 nakon sto je vidio "cudan izgled" prije refresha.
+        if (overwrite) {
+          document.querySelectorAll('.pcard[data-app-id="' + manifest.id + '"]').forEach(card => {
+            const inner = card.querySelector('.pcard-inner');
+            if (!inner || inner.querySelector('.pcard-stale-banner')) return;
+            const banner = document.createElement('div');
+            banner.className = 'pcard-stale-banner aiz-tooltip-host';
+            banner.dataset.aizTooltip = 'Alat je upravo nadograđen - osvježi stranicu (Cmd+R / F5) da ova kartica prikaže novu verziju.';
+            banner.innerHTML = '<span>Osvježi stranicu za nove promjene</span><span class="pcard-stale-info" aria-hidden="true">ⓘ</span>';
+            inner.insertBefore(banner, inner.firstChild);
+          });
+        }
         showToast('„' + manifest.name + '“ je instaliran.');
       } catch (err) {
         showToast('Instalacija nije uspjela: server nije dostupan.');
@@ -3996,8 +4048,8 @@
         return;
       }
       if (modalMode === 'edit-topbar') {
-        if (!selectedIcon) return;
-        persistValue(TOPBAR_ICON_KEY, selectedIcon);
+        // Ikonica se vise ne bira (31.7.2026) - TOPBAR_ICON_KEY ostaje na
+        // postojecoj/default vrijednosti, samo se naziv mijenja.
         persistValue(TOPBAR_LABEL_KEY, name);
         applyTopbarIdentity();
         renderTopbarIdentityPreview();

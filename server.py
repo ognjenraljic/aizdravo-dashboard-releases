@@ -33,6 +33,13 @@ PID_FILE = BASE_DIR / 'dashboard.pid'
 # safety net to catch runtime errors while building, before this gets
 # handed to other people to download. Gitignored, lives only in this repo.
 ERROR_LOG = BASE_DIR / 'errors.jsonl'
+# "Ukloni trajno" (31.7.2026) - premjesti umjesto obrisi. Prije je
+# handle_delete_app radio shutil.rmtree(); sad se apps/<id>/ folder
+# premjesta ovamo, van apps/ (da ga nikakav apps/ scan/instalacija
+# ikad ne pokupi), sa timestamp sufiksom kod imenskog sudara. Vidi
+# feedback_never_clobber_user_data (Ignis) - isti princip primijenjen
+# ovdje: dugme i dalje kaže "trajno", ali stvarno se ne brise sa diska.
+APPS_ARCHIVE_DIR = BASE_DIR / '_apps_archive'
 STATE_FILE = BASE_DIR / 'dashboard-state.json'
 STATE_TMP_FILE = BASE_DIR / 'dashboard-state.json.tmp'
 STATE_LOCK = threading.Lock()
@@ -449,12 +456,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
 
     def handle_delete_app(self):
-        """Katalog "Ukloni trajno" (27.7.2026) - suprotno od stare 'Ukloni'
-        akcije u Podešavanjima (koja je samo dodavala alat na
-        disabled-apps listu, fajlovi i ctx.storage podaci su ostajali).
-        Ovo STVARNO briše apps/<id>/ folder sa diska i njegovu script
-        liniju iz index.html - namjerno nepovratno, korisnik je upozoren
-        na klijentskoj strani prije poziva. id se validira PRIJE ijednog
+        """Katalog "Ukloni trajno" (27.7.2026, prepravljeno 31.7.2026) -
+        suprotno od stare 'Ukloni' akcije u Podešavanjima (koja je samo
+        dodavala alat na disabled-apps listu, fajlovi i ctx.storage podaci
+        su ostajali). Ovo skida apps/<id>/ iz kataloga i njegovu script
+        liniju iz index.html - korisniku se prikazuje kao da je nestao, ali
+        folder se PREMJEŠTA u APPS_ARCHIVE_DIR (izvan apps/, van dosega bilo
+        koje instalacije/reference), nikad stvarno ne briše (feedback_never
+        _clobber_user_data princip - slucajno "Ukloni trajno" na pogresnom
+        alatu ne smije biti nepovratno). id se validira PRIJE ijednog
         file-system poziva (isti obrazac kao apps-core.js registerApp())
         i putanja se provjerava da ostane direktno dijete apps/ - nikad
         ../ eskejp iz tog foldera."""
@@ -478,7 +488,28 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
 
         try:
-            shutil.rmtree(app_dir)
+            APPS_ARCHIVE_DIR.mkdir(exist_ok=True)
+            # Arhiviraj po VERZIJI (31.7.2026), ne po timestampu - ponovljeni
+            # obrisi/reinstal ciklusi iste verzije (npr. tokom probe pred
+            # snimanje) su prije gomilali video-kompresor_20260731154001,
+            # _155913, _160042... sve identicne kopije iste verzije. Ako je
+            # ta tacna verzija vec arhivirana, nova zamjenjuje staru umjesto
+            # da joj se doda duplikat pored - i dalje nikad shutil.rmtree
+            # na LIVE folder (samo na vec-arhiviranu redundantnu kopiju).
+            version = None
+            app_js = app_dir / 'app.js'
+            if app_js.is_file():
+                try:
+                    match = re.search(r"version\s*:\s*['\"]([^'\"]{1,20})['\"]", app_js.read_text(encoding='utf-8'))
+                    if match:
+                        version = match.group(1)
+                except OSError:
+                    pass
+            archive_name = f'{app_id}-{version}' if version else app_id
+            dest = APPS_ARCHIVE_DIR / archive_name
+            if dest.exists():
+                shutil.rmtree(dest)
+            shutil.move(str(app_dir), str(dest))
         except OSError as exc:
             self.send_json(500, {'ok': False, 'error': 'delete_failed', 'message': str(exc)})
             return

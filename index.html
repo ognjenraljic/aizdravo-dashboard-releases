@@ -417,11 +417,6 @@
      Dashboard aktivna kartica gore. -->
 <div class="app-fullscreen-pages" id="appFullscreenPages" hidden></div>
 
-<div class="save-status" id="saveStatus" role="status" aria-live="polite">
-  <span class="save-status-dot" aria-hidden="true"></span>
-  <span id="saveStatusText">Sačuvano</span>
-</div>
-
 <div class="fx-frame" id="fxFrame">
   <canvas id="glowCanvas"></canvas>
   <canvas id="burstCanvas"></canvas>
@@ -470,6 +465,15 @@
         <button type="button" class="topbar-identity-edit" id="topbarIdentityEdit">Uredi</button>
       </div>
     </div>
+    <div class="settings-row">
+      <div>
+        <strong>Svijetla tema</strong>
+        <span>Nezavisno od boje dashboarda ispod</span>
+      </div>
+      <button class="toggle-switch" id="modeToggle" type="button" role="switch" aria-checked="false" aria-label="Svijetla tema">
+        <span></span>
+      </button>
+    </div>
     <div class="settings-section">
       <p class="settings-section-label">Boja dashboarda</p>
       <div class="theme-grid" id="themeGrid" role="radiogroup" aria-label="Izaberi boju dashboarda">
@@ -517,7 +521,7 @@
             <span>Akcentna boja</span>
             <span class="custom-color-control">
               <input id="customThemeAccent" type="color" value="#e879f9" aria-label="Izaberi akcentnu boju">
-              <output id="customThemeHex" for="customThemeAccent">#e879f9</output>
+              <input id="customThemeHex" type="text" value="#e879f9" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Kod akcentne boje (hex)">
             </span>
           </label>
         </div>
@@ -549,15 +553,6 @@
         <span>Sakrij kontrole i spriječi slučajno pomjeranje</span>
       </div>
       <button class="toggle-switch" id="layoutLockToggle" type="button" role="switch" aria-checked="false" aria-label="Zaključaj raspored dashboarda">
-        <span></span>
-      </button>
-    </div>
-    <div class="settings-row">
-      <div>
-        <strong>Status čuvanja</strong>
-        <span>Prikaži "Sačuvano" indikator gore desno</span>
-      </div>
-      <button class="toggle-switch" id="saveStatusToggle" type="button" role="switch" aria-checked="true" aria-label="Prikaži status čuvanja">
         <span></span>
       </button>
     </div>
@@ -614,7 +609,7 @@
         <svg><use href="#icon-tabler-folder-plus"></use></svg>
         Učitaj alat
       </button>
-      <span class="apps-install-hint">Izaberi folder alata (npr. preuzet sa drugog dashboarda) - instalira se automatski.</span>
+      <span class="apps-install-hint">Izaberi folder alata (npr. preuzet sa drugog dashboarda) - instalira se automatski. Ako zamjenjuješ postojeći alat, osvježi stranicu da se novi alat kompletno učita.</span>
     </div>
   </div>
 </div>

@@ -12,3 +12,10 @@ dashboard.pid
 # Log auto-pokrenutog servera (install-autostart-mac.command).
 dashboard-autostart.log
 .DS_Store
+
+# Arhivirani (ne obrisani) alati kad se "Ukloni trajno" pokrene - vidi
+# handle_delete_app u server.py (31.7.2026). Per-user runtime stanje,
+# isti princip kao dashboard-state.json iznad - ne dio shippovanog
+# proizvoda.
+_apps_archive/*
+!_apps_archive/.gitkeep
