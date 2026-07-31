@@ -31,6 +31,14 @@ CORE_FILES = [
     'uninstall-autostart-mac.command', 'uninstall-autostart-windows.bat',
     '.claude/skills/install-app/SKILL.md',
     '.claude/skills/update-dashboard/SKILL.md',
+    '.claude/skills/build-app/SKILL.md',
+    # Codex čita identičan sadržaj preko .agents/skills/ (real fajl, ne
+    # simlink - Windows git-symlink gotcha) - bio je propust da ova tri
+    # nisu u CORE_FILES prije 31.7.2026, pa se Codex-only korisnicima
+    # nikad nisu ažurirala poslije prve instalacije.
+    '.agents/skills/install-app/SKILL.md',
+    '.agents/skills/update-dashboard/SKILL.md',
+    '.agents/skills/build-app/SKILL.md',
     'tools/dashboard_updater.py',
     'MANIFEST.json',
 ]

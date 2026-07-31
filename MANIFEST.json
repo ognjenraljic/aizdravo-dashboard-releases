@@ -5,10 +5,10 @@
   "style.css": "f597a5913f58ee79ad1d23792a7690518ff82967298e7c7135893b6c9b06684d",
   "server.py": "5b2e1c40b7cfea3148a3c213c612f0c5a70b980bd2be3762c95b5e71a30dd7e8",
   "APPS_AND_WIDGETS.md": "52501fce0bc676a391d616698b19809eadd58316d21a18bfb4ec0738cb122e88",
-  "CLAUDE.md": "b0029ef80ebdc5c6535baac24061a2c80725ff944e090821c3ecb95b599357de",
-  "AGENTS.md": "b0029ef80ebdc5c6535baac24061a2c80725ff944e090821c3ecb95b599357de",
+  "CLAUDE.md": "a68f97e5189a06dbf005b11539d3f55b2a21a21865850e4dfbc6d9d793d06ea1",
+  "AGENTS.md": "a68f97e5189a06dbf005b11539d3f55b2a21a21865850e4dfbc6d9d793d06ea1",
   "README.md": "f76c42235feac7e2f350a06814397e09235733721ba9464e68f31ddee16cf542",
-  "VERSION": "78b591400c56b7b67b8cb3b2b8a8e65e9093897f02ce0878e6b5405c68620fa7",
+  "VERSION": "acb57a7135b2d7d6e665f67f056e21353023b93835f54def1ae523bf76f1bfb3",
   "vendor/sortable.min.js": "8a9889aecc2f011e15031fed87eeb35ac75e62655a7b4889ba247ee8ea872474",
   "assets/logo.png": "aadcbf89465643ccca5fad35e7666fc9f5c9af2600516f09097c6f68395e4dfb",
   "start-mac.command": "c1e04baac12f066b1bf764f5c94159736c76b12ac208f8ce673a9c3b684cf894",
@@ -21,5 +21,9 @@
   "uninstall-autostart-windows.bat": "25c306abe726ebc80711d4cf8db2bc55abd7b9ebb901d402277a94cb641e3aec",
   ".claude/skills/install-app/SKILL.md": "a3a119bc021e50834d4780c066eb99b6004271e7334c3f3fd015322682435d07",
   ".claude/skills/update-dashboard/SKILL.md": "71c3873ea1505040c2d152e278e4b8a34172a54a72fbfe747600e730ae35fe50",
-  "tools/dashboard_updater.py": "1e330a225e7d69b9930fb825407e01b936e041e5b2d23a284ad104c84f2d1750"
+  ".claude/skills/build-app/SKILL.md": "9459bd1db44e27a5d69731d405eb0393b9ef7fc12bb5884463744161e3ac51a8",
+  ".agents/skills/install-app/SKILL.md": "a3a119bc021e50834d4780c066eb99b6004271e7334c3f3fd015322682435d07",
+  ".agents/skills/update-dashboard/SKILL.md": "71c3873ea1505040c2d152e278e4b8a34172a54a72fbfe747600e730ae35fe50",
+  ".agents/skills/build-app/SKILL.md": "9459bd1db44e27a5d69731d405eb0393b9ef7fc12bb5884463744161e3ac51a8",
+  "tools/dashboard_updater.py": "78abd2e7da809f4c3e7b493f191dfbf66e1178b34828d1300c33abb176d24c63"
 }
