@@ -59,6 +59,8 @@ AIZdravo.registerApp({
 
 `widget()`/`app()` mogu vratiti **cleanup funkciju** (poziva se kad se element uklanja — očisti tajmere/listenere).
 
+**Preview mod (katalog "Widgeti" prikaz, 2.8.2026):** kad se `widget()` renderuje kao mockup u katalogu, dobija ctx sa mock `storage` (`get` uvijek vraća `fallback`, `set`/`remove` ne rade ništa) i no-op `toast`/`openApp`/`emit`/`on` — alat NE treba ovo posebno da obrađuje, isti kod radi u oba slučaja, samo katalog nikad ne pokazuje pravi sačuvan sadržaj sa boarda (npr. tekst ukucan u QR alatu).
+
 ### ctx — šta alat dobija
 
 ```js

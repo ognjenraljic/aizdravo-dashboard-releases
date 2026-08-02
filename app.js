@@ -1194,15 +1194,11 @@
           // cijelog tila. Klik otvara aplikaciju, isto ponašanje kao prije.
           const tile = document.createElement('button');
           tile.type = 'button';
-          tile.className = 'app-tile aiz-tooltip-host';
+          tile.className = 'app-tile';
           tile.innerHTML =
             '<span class="app-icon-tile app-icon-tile--md"><svg><use href="#icon-tabler-' + safeIconName(app.icon) + '"></use></svg></span>' +
             '<span class="app-tile-name"></span>';
           tile.querySelector('.app-tile-name').textContent = app.name;
-          // dataset (ne innerHTML) - app.name/description dolaze iz alatovog
-          // manifesta, nikad ne treba vjerovati da su HTML-bezbjedni; portal
-          // tooltip mehanizam (vidi showAizTooltip) čita ovaj atribut.
-          tile.dataset.aizTooltip = app.name + ' — ' + app.description;
           tile.addEventListener('click', () => openAppTabGlobal(app.id));
           content.appendChild(tile);
         });
@@ -3401,12 +3397,11 @@
           tile.className = 'app-tile apps-catalog-tile';
           const header = document.createElement('button');
           header.type = 'button';
-          header.className = 'app-tile-header aiz-tooltip-host';
+          header.className = 'app-tile-header';
           header.innerHTML =
             '<span class="app-icon-tile app-icon-tile--lg"><svg><use href="#icon-tabler-' + safeIconName(app.icon) + '"></use></svg></span>' +
             '<span class="app-tile-name"></span>';
           header.querySelector('.app-tile-name').textContent = app.name;
-          header.dataset.aizTooltip = app.name + ' — v' + app.version + ' — ' + app.description;
           header.addEventListener('click', () => {
             closeAppsPanel();
             openAppTab(app.id);
@@ -3450,12 +3445,11 @@
 
         const header = document.createElement('button');
         header.type = 'button';
-        header.className = 'app-tile-header aiz-tooltip-host';
+        header.className = 'app-tile-header';
         header.innerHTML =
           '<span class="app-icon-tile app-icon-tile--sm"><svg><use href="#icon-tabler-' + safeIconName(app.icon) + '"></use></svg></span>' +
           '<span class="app-tile-name"></span>';
         header.querySelector('.app-tile-name').textContent = app.name;
-        header.dataset.aizTooltip = app.name + ' — v' + app.version + ' — ' + app.description;
         header.addEventListener('click', () => addWidgetToActiveTab(app, app.defaultSize));
         tile.appendChild(header);
         const deleteBtn = document.createElement('button');
@@ -3492,7 +3486,7 @@
           if (span > 1) tile.style.gridColumn = 'span ' + span;
         }
         tile.appendChild(preview);
-        const previewCleanup = AIZdravo.renderInto(app.id, 'widget', preview);
+        const previewCleanup = AIZdravo.renderInto(app.id, 'widget', preview, { preview: true });
         if (previewCleanup) previewCleanups.push(previewCleanup);
 
         const sizeKeys = ['s', 'm', 'l'].filter(key => app.sizes[key]);
@@ -4134,11 +4128,20 @@
         fallbackTolerance: 3,
         onStart() {
           document.body.classList.add('no-select');
+          // Indikator (klizeća pozadina iza aktivnog taba) se inače
+          // pomjera SAMO na klik - dok Sortable animira ostale redove
+          // tokom prevlačenja, indikator ostaje parkiran na staroj pixel
+          // poziciji, pa ispadne da "sjedi" iza BILO kog reda koji se
+          // trenutno tu zatekne (obično prvi, 2.8.2026 bug). Sakrij ga za
+          // trajanje drag-a umjesto da ga pokušavamo pratiti uživo.
+          if (indicator) indicator.style.opacity = '0';
         },
         onEnd() {
           document.body.classList.remove('no-select');
           saveTabOrderFromDOM();
           const active = navItems.find(item => item.classList.contains('is-active'));
+          if (active) moveIndicatorTo(active);
+          if (indicator) indicator.style.opacity = '';
           if (active) {
             requestAnimationFrame(() => moveIndicatorTo(active));
             setTimeout(() => moveIndicatorTo(active), 280);

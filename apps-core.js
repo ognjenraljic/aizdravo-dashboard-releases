@@ -167,7 +167,14 @@
   // autor alata odmah sazna da podatke te velicine ne drzi ovdje.
   var MAX_APP_STORAGE_BYTES = 200 * 1024;
 
-  function makeCtx(appId) {
+  // preview=true (katalog "Widgeti" prikaz, 2.8.2026): alat se renderuje
+  // sa MOCK storage-om koji nikad ne čita pravi sačuvani sadržaj i nikad
+  // ne piše - katalog treba da pokaže KAKO widget izgleda, ne stvaran
+  // sadržaj koji je Ognjen (ili neko drugi) ukucao na svom boardu (npr.
+  // tekst u QR alatu). Iz istog razloga toast/openApp/emit su no-op i
+  // ovdje - preview nije živa instanca, samo vizuelni mockup.
+  function makeCtx(appId, opts) {
+    var preview = !!(opts && opts.preview);
     var storageKey = 'aizdravo:app:' + appId;
     function readAll() {
       try {
@@ -192,7 +199,11 @@
     }
     return {
       appId: appId,
-      storage: {
+      storage: preview ? {
+        get: function (key, fallback) { return fallback !== undefined ? fallback : null; },
+        set: function () { return false; },
+        remove: function () { return false; },
+      } : {
         get: function (key, fallback) {
           var all = readAll();
           return key in all ? all[key] : (fallback !== undefined ? fallback : null);
@@ -208,19 +219,21 @@
           return writeAll(all);
         },
       },
-      openApp: function (id) { if (host && host.openApp) host.openApp(id || appId); },
-      toast: function (message) { if (host && host.toast) host.toast(String(message).slice(0, 160)); },
+      openApp: preview ? function () {} : function (id) { if (host && host.openApp) host.openApp(id || appId); },
+      toast: preview ? function () {} : function (message) { if (host && host.toast) host.toast(String(message).slice(0, 160)); },
       // Među-alat komunikacija - vidi "Event bus" komentar gore i
-      // APPS_AND_WIDGETS.md ("Komunikacija među alatima").
-      emit: function (eventName, payload) { return busEmit(eventName, payload); },
-      on: function (eventName, handler) { return busOn(eventName, handler); },
+      // APPS_AND_WIDGETS.md ("Komunikacija među alatima"). U preview modu
+      // izolovano od pravog busa - mockup ne smije ni emitovati ni
+      // primati živa dešavanja sa stvarnog boarda.
+      emit: preview ? function () { return 0; } : function (eventName, payload) { return busEmit(eventName, payload); },
+      on: preview ? function () { return function () {}; } : function (eventName, handler) { return busOn(eventName, handler); },
     };
   }
 
   // Render sa zaštitom: greška unutar alata postane poruka u NJEGOVOM
   // elementu, ne pad cijelog dashboarda. Vraća cleanup funkciju alata
   // (ako je alat vrati) da je host pozove pri uklanjanju elementa.
-  function renderInto(appId, mode, el) {
+  function renderInto(appId, mode, el, opts) {
     var app = registry.get(appId);
     if (!app) {
       el.innerHTML = '<div class="app-render-error"><strong>Alat nije dostupan</strong><span>„' + appId + '" nije instaliran u ovom dashboardu.</span></div>';
@@ -237,7 +250,7 @@
     }
     try {
       el.innerHTML = '';
-      var cleanup = renderFn(el, makeCtx(appId));
+      var cleanup = renderFn(el, makeCtx(appId, opts));
       return typeof cleanup === 'function' ? cleanup : null;
     } catch (err) {
       console.warn('[aizdravo:apps] Alat "' + appId + '" je javio grešku pri renderu (' + mode + '):', err);
