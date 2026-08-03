@@ -1972,6 +1972,7 @@
   const fabOpenSettings = document.getElementById('fabOpenSettings');
   const settingsOverlay = document.getElementById('settingsOverlay');
   const settingsClose = document.getElementById('settingsClose');
+  const settingsVodiciBtn = document.getElementById('settingsVodiciBtn');
   const gridToggle = document.getElementById('gridToggle');
   const layoutLockToggle = document.getElementById('layoutLockToggle');
   const modeToggle = document.getElementById('modeToggle');
@@ -2174,6 +2175,12 @@
   }
   if (fabOpenSettings) fabOpenSettings.addEventListener('click', openSettings);
   if (settingsClose) settingsClose.addEventListener('click', closeSettings);
+  if (settingsVodiciBtn) {
+    settingsVodiciBtn.addEventListener('click', () => {
+      closeSettings();
+      openAppTabGlobal('vodici');
+    });
+  }
   if (gridToggle) {
     gridToggle.addEventListener('click', () => {
       setGridVisible(!gridVisible);

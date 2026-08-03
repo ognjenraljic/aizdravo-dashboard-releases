@@ -1669,6 +1669,34 @@ body.is-app-fullscreen .fab-menu { display: none; }
 }
 .settings-close svg { width: 15px; height: 15px; }
 
+.settings-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.settings-vodici-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 14px 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.09);
+  background: rgba(255,255,255,.035);
+  color: var(--text-faint);
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+.settings-vodici-btn:hover {
+  color: var(--text);
+  border-color: rgba(255,255,255,.18);
+  background: rgba(255,255,255,.07);
+}
+.settings-vodici-btn svg { width: 15px; height: 15px; }
+
 .settings-row {
   min-height: 72px;
   padding: 14px 15px;
