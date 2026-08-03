@@ -4,9 +4,7 @@ Vaš lični, potpuno prilagodljiv operativni sistem. Pokreće se lokalno na vaš
 
 ## ⬇️ Preuzimanje
 
-**[Preuzmi najnoviju verziju](https://github.com/ognjenraljic/aizdravo-dashboard-releases/releases/latest/download/ai-zdravo-dashboard.zip)**: link uvijek vodi na najnoviji release, bez obzira kad gledate ovu stranicu.
-
-Raspakujte zip, otvorite folder u Claude Desktop ili ChatGPT desktop aplikaciji i recite mu da pokrene dashboard.
+Ovaj folder JE dashboard - ako ga imate, već ste ga preuzeli. Raspakujte zip (ako još niste), otvorite folder u Claude Desktop ili ChatGPT desktop aplikaciji i recite mu da pokrene dashboard.
 
 ## Šta je ovo
 
@@ -35,5 +33,5 @@ Cijeli dashboard je samo ovaj folder. Kopirate ga (USB, cloud, AirDrop) na drugi
 
 ## Ažuriranje
 
-- **Dashboard core** (novi izgled/funkcije/ispravke): recite Claude-u/Codex-u "provjeri ima li update za dashboard". Pravi se backup prije primjene, vaš raspored i instalirani alati se ne diraju.
+- **Dashboard core** (novi izgled/funkcije/ispravke): kad dobijete folder nove verzije, recite Claude-u/Codex-u "skinuta je nova verzija, ažuriraj dashboard" i navedite gdje je raspakovana. Pravi se backup prije primjene, vaš raspored i instalirani alati se ne diraju.
 - **Pojedinačni alat**: nova verzija alata se instalira isto kao i prvi put (prompt ili gotov folder za isti alat). Vaši podaci u tom alatu ostaju.
