@@ -1,45 +1,30 @@
 ---
 name: update-dashboard
-description: 'Provjerava da li postoji novija verzija SAMOG dashboard core-a (index.html, app.js, apps-core.js, style.css, server.py, dokumentacija) i primjenjuje je bez da dira korisnikov raspored, teme ili instalirane alate. Uvijek pravi backup PRIJE primjene, provjerava SHA-256 hash svakog fajla PRIJE nego se bilo šta primijeni, i radi atomski (sve ili ništa). Trigger: "provjeri ima li update za dashboard", "ažuriraj dashboard", "da li imam najnoviju verziju dashboarda", "update dashboard core".'
+description: 'Primjenjuje noviju verziju dashboard core-a (index.html, app.js, apps-core.js, style.css, server.py, dokumentacija) iz lokalnog foldera nove verzije, bez da dira korisnikov raspored, teme ili instalirane alate. Uvijek pravi backup PRIJE primjene, provjerava SHA-256 hash svakog fajla PRIJE nego se bilo šta primijeni, i radi atomski (sve ili ništa). Trigger: "skinuta je nova verzija, ažuriraj dashboard", "primijeni update iz ovog foldera", "ažuriraj naš operativni sistem", "update dashboard core".'
 ---
 
 # Update dashboard core-a (AI Zdravo Dashboard)
 
-Cilj: dashboard core (izgled, funkcije, ispravke) se ažurira na najnoviju verziju, a korisnikov raspored (`dashboard-state.json`), **instalirani alati (i njihove registracije u `index.html`, i eventualne server.py dopune)** i njegov `.aizdravo-welcomed` marker ostaju POTPUNO netaknuti. Backup se pravi UVIJEK, prije bilo koje izmjene, bez izuzetka. Primjena je atomska (garantovano kodom u `tools/dashboard_updater.py`, ne prozom) - ili sve prođe do kraja, ili se ništa lokalno ne mijenja.
+Cilj: dashboard core (izgled, funkcije, ispravke) se ažurira na novu verziju, a korisnikov raspored (`dashboard-state.json`), **instalirani alati (i njihove registracije u `index.html`, i eventualne server.py dopune)** i njegov `.aizdravo-welcomed` marker ostaju POTPUNO netaknuti. Backup se pravi UVIJEK, prije bilo koje izmjene, bez izuzetka. Primjena je atomska (garantovano kodom u `tools/dashboard_updater.py`, ne prozom) - ili sve prođe do kraja, ili se ništa lokalno ne mijenja.
 
 ## Izvor istine
 
-Core fajlovi se hostuju u GitHub repou `ognjenraljic/aizdravo-dashboard-releases` (JAVAN repo - mora biti public da `raw.githubusercontent.com` fetch radi bez autentikacije sa bilo čije mašine koja skida dashboard; sadrži SAMO core - bez korisničkih podataka, provjereno prije objave). Raw URL baza:
+**Nova verzija stiže kao lokalan folder** - korisnik je negdje dobio/raspakovao zip nove verzije (privatno podijeljen link, direktan transfer, itd.) i kaže nešto kao "skinuta je nova verzija, ažuriraj dashboard" ili "primijeni update iz ovog foldera". Nema mrežnog provjeravanja/preuzimanja - dashboard sam ne provjerava nikakav eksteran izvor za novu verziju, niti se oslanja na bilo koji javan servis. Sve što treba je putanja do raspakovanog foldera.
 
-```
-https://raw.githubusercontent.com/ognjenraljic/aizdravo-dashboard-releases/main/
-```
+Provjeri da taj folder stvarno ima `MANIFEST.json` i `VERSION` u root-u (svaki pravi izvezen paket ih nosi) - ako ne, tretiraj kao nepouzdan izvor i pitaj korisnika da potvrdi da je zip kompletan/ispravno raspakovan.
 
-Uz `VERSION`, repo nosi i `MANIFEST.json` - `{"fajl/putanja": "sha256hex", ...}` za SVAKI core fajl te verzije. Manifest je obavezan dio provjere integriteta (radi ga sam `dashboard_updater.py`, Korak 2-5 ispod) - ako ga fetch ne vrati, tretiraj kao da update-izvor nije dostupan (isto kao 404 ispod), ne primjenjuj ništa bez njega.
-
-Ako fetch na ovaj URL vrati 404 ili grešku (repo još ne postoji, ili nije public/nije dostupan bez auth-a) - javi korisniku jasno da update-izvor još nije podešen, ne pravi ništa, ne javljaj lažno "gotovo".
-
-### Alternativa - korisnik već ima lokalno raspakovan folder nove verzije
-
-Ako je korisnik SAM skinuo/raspakovao zip nove verzije (bilo odakle - GitHub Release, privatan link, itd.) i kaže nešto kao "primijeni update iz ovog foldera" ili "vidi šta je novo u toj verziji i primijeni kod nas" - ne treba nikakav fetch. `dashboard_updater.py` ima `--source-dir` umjesto `--source-url` (vidi Korak 2-5) koji radi IDENTIČNU `apply_update()` mehaniku (backup, SHA-256 provjera protiv `MANIFEST.json` UNUTAR tog lokalnog foldera, spajanje `index.html`, detekcija `server.py` customizacije) potpuno offline, bez ijednog mrežnog poziva. Provjeri samo da raspakovan folder stvarno ima `MANIFEST.json` i `VERSION` u root-u (svaki pravi release ih nosi) - ako ne, tretiraj kao nepouzdan izvor i pitaj korisnika da potvrdi da je zip kompletan.
+Ako korisnik kaže da je nova verzija skinuta ali ne navede putanju, pitaj gdje je raspakovana (npr. Downloads, Desktop) prije nego nastaviš.
 
 ## Korak 1 - Uporedi verzije
 
 1. Pročitaj lokalni `VERSION` fajl u root-u ovog foldera (ako ne postoji, tretiraj kao `0.0.0`).
-2. Fetch `VERSION` sa raw URL-a iznad.
-3. Ako su iste - javi korisniku da je dashboard već na najnovijoj verziji, završi ovdje.
-4. Ako je remote noviji - nastavi na Korak 2. Ako fetch ne uspije - vidi "Izvor istine" iznad.
+2. Pročitaj `VERSION` iz foldera nove verzije (korisnikova putanja).
+3. Ako su iste - javi korisniku da je dashboard već na toj verziji, pitaj da li ipak želi primijeniti (npr. ako je popravio nešto ručno pa hoće da se vrati na čisto stanje).
+4. Ako je nova verzija stvarno novija - nastavi na Korak 2.
 
 ## Korak 2-5 - Pokreni `tools/dashboard_updater.py` (mehanika je deterministička, ne prozna)
 
-Od 28.7.2026, backup + fetch + hash provjera + spajanje `index.html` bloka + detekcija `server.py` customizacije + atomska primjena su izvučeni iz proze u pravi Python skript, `tools/dashboard_updater.py` (ista logika koju bi ranije AI agent ručno pratio korak po korak - sad je to determinističan kod, brže i bez rizika da neki korak bude preskočen ili pogrešno protumačen; test pokrivenost: `tools/test_dashboard_updater.py`).
-
-```bash
-cd <folder dashboarda>
-python3 tools/dashboard_updater.py . --source-url https://raw.githubusercontent.com/ognjenraljic/aizdravo-dashboard-releases/main
-```
-
-Ili, za lokalni-folder slučaj iz "Alternativa" iznad (bez fetch-a):
+Backup + hash provjera + spajanje `index.html` bloka + detekcija `server.py` customizacije + atomska primjena su izvučeni iz proze u pravi Python skript, `tools/dashboard_updater.py` (determinističan kod, brže i bez rizika da neki korak bude preskočen ili pogrešno protumačen; test pokrivenost: `tools/test_dashboard_updater.py`).
 
 ```bash
 cd <folder dashboarda>
@@ -47,7 +32,7 @@ python3 tools/dashboard_updater.py . --source-dir <putanja do raspakovanog folde
 ```
 
 Skript sam radi sve ovo, u ovom redoslijedu:
-1. Fetch `MANIFEST.json` + svaki core fajl sa raw URL-a u privremeni staging folder (ili, kod `--source-dir`, čita ih direktno iz tog lokalnog foldera - nema fetch koraka).
+1. Čita `MANIFEST.json` direktno iz foldera nove verzije (ako postoji - nema fetch koraka, sve lokalno).
 2. SHA-256 provjera svakog fajla protiv `MANIFEST.json` - ako ijedan ne odgovara, PREKIDA ODMAH, ništa lokalno se ne mijenja, javlja grešku.
 3. Backup CIJELOG trenutnog foldera u sibling folder (`../<ime-foldera>-backup-<YYYY-MM-DD-HHMM>/`).
 4. Spaja `index.html`: izdvaja korisnikove `<script src="apps/...">` registracije iz TRENUTNOG fajla i ubacuje ih u NOVI (core update nikad ne prepisuje instalirane alate).
@@ -60,10 +45,10 @@ Rezultat je JSON izvještaj (`backup_dir`, `applied_files`, `server_customizatio
 
 Ako je izvještaj javio `server_customization_detected` (neprazna lista) i `server_update_skipped: true`:
 - Javi korisniku TAČNO koje metode su prepoznate kao njegova dopuna.
-- Pitaj da li želi da RUČNO spojiš: uzmeš core `server.py` iz backup foldera (ili ponovnim fetch-om) i preko Edit-a (ne bulk overwrite) vratiš tu dopunu nazad.
+- Pitaj da li želi da RUČNO spojiš: uzmeš core `server.py` iz backup foldera (ili iz foldera nove verzije) i preko Edit-a (ne bulk overwrite) vratiš tu dopunu nazad.
 - Ako ne potvrdi, ostavi `server.py` kakav jeste (skript ga već nije dirao) - ostatak update-a je već primijenjen normalno.
 
-Ako je fetch/hash provjera pukla (Korak 1-2 skripta), tretiraj kao "update-izvor nije dostupan" - vidi "Izvor istine" iznad, ne primjenjuj ništa.
+Ako fajl `MANIFEST.json` ili `VERSION` nedostaje u folderu nove verzije, ili hash provjera pukne - tretiraj kao "izvor nije pouzdan/kompletan", vidi "Izvor istine" iznad, ne primjenjuj ništa.
 
 ## Korak 6 - Restart i provjera
 
@@ -80,4 +65,4 @@ Ako je fetch/hash provjera pukla (Korak 1-2 skripta), tretiraj kao "update-izvor
 - Ne prepisuj `server.py` ako izvještaj javi customizaciju, bez eksplicitne korisnikove potvrde.
 - Ne primjenjuj ništa ako skript prijavi hash grešku (`UpdateError`).
 - Ne javljaj "ažurirano" dok Korak 6 nije prošao.
-- Ne pokreći ovaj skill automatski bez da korisnik eksplicitno zatraži - za razliku od Python-provjere/pokretanja dashboarda (CLAUDE.md Korak 2-3), provjera update-a NIJE automatska pri svakom otvaranju sesije.
+- Ne pokreći ovaj skill automatski bez da korisnik eksplicitno zatraži i navede (ili potvrdi) putanju do nove verzije.

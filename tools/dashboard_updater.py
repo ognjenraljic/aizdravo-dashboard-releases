@@ -18,7 +18,6 @@ import json
 import shutil
 import sys
 import time
-import urllib.request
 from pathlib import Path
 
 CORE_FILES = [
@@ -143,32 +142,6 @@ def backup_folder(current_dir):
     return backup_dir
 
 
-def fetch_remote_staging(base_url, staging_dir):
-    """Skida MANIFEST.json + svaki core fajl sa raw GitHub URL-a u
-    staging_dir. Vraća učitan manifest (dict) za Korak 3 hash provjeru.
-
-    MANIFEST.json se (28.7.2026) piše u staging_dir kao SVOJ SOPSTVENI
-    fajl - prije ovog fixa je samo parsiran u memoriji i nikad primijenjen
-    na disk, pa je lokalni MANIFEST.json ostajao trajno zastario (i dalje
-    prijavljivao hash-eve STARE verzije) poslije svakog update-a, iako je
-    svaki core fajl bio ispravno ažuriran na disku. Ne mora biti hash-
-    verifikovan sam protiv sebe (ista logika kao VERSION - fetch preko
-    HTTPS raw GitHub URL-a se vjeruje kao izvor istine)."""
-    staging_dir.mkdir(parents=True, exist_ok=True)
-    manifest_url = base_url.rstrip('/') + '/MANIFEST.json'
-    with urllib.request.urlopen(manifest_url, timeout=10) as resp:
-        manifest_bytes = resp.read()
-    manifest = json.loads(manifest_bytes.decode('utf-8'))
-    (staging_dir / 'MANIFEST.json').write_bytes(manifest_bytes)
-    for rel in manifest:
-        dest = staging_dir / rel
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        url = base_url.rstrip('/') + '/' + rel
-        with urllib.request.urlopen(url, timeout=10) as resp:
-            dest.write_bytes(resp.read())
-    return manifest
-
-
 def apply_update(current_dir, staging_dir, manifest=None, auto_merge_server=False):
     """Primijeni core update iz staging_dir na current_dir. Ako je
     `manifest` dat, provjerava SHA-256 svakog fajla PRIJE bilo čega.
@@ -230,46 +203,28 @@ def apply_update(current_dir, staging_dir, manifest=None, auto_merge_server=Fals
 def main():
     parser = argparse.ArgumentParser(description='AI Zdravo Dashboard - core update mehanika')
     parser.add_argument('current_dir', help='folder dashboarda koji se ažurira')
-    parser.add_argument('--source-url', help='raw GitHub base URL (npr. https://raw.githubusercontent.com/.../main)')
-    parser.add_argument('--source-dir', help='lokalni folder sa novom verzijom core-a (umjesto --source-url, za test/offline upotrebu)')
+    parser.add_argument('--source-dir', required=True, help='lokalni folder sa novom verzijom core-a (raspakovan zip nove verzije)')
     parser.add_argument('--auto-merge-server', action='store_true', help='primijeni server.py i ako ima customizaciju (default: preskoči i prijavi)')
     args = parser.parse_args()
 
     # .resolve() je OBAVEZAN ovdje - dokumentacija (SKILL.md) instruira
     # korisnika/agenta da pozove skriptu bas kao `... dashboard_updater.py .`
     # (relativna tacka). Path('.').name je prazan string i Path('.').parent
-    # je Path('.') sam - bez resolve(), backup_folder() i staging_dir ispod
-    # zavrse UNUTAR current_dir-a samog (npr. "./-backup-<ts>" umjesto
-    # sibling foldera "../<pravo-ime>-backup-<ts>"), otkriveno uzivo na
+    # je Path('.') sam - bez resolve(), backup_folder() ispod zavrsi UNUTAR
+    # current_dir-a samog (npr. "./-backup-<ts>" umjesto sibling foldera
+    # "../<pravo-ime>-backup-<ts>"), otkriveno uzivo na
     # ai-zdravo-dashboard-serijal 28.7.2026.
     current_dir = Path(args.current_dir).resolve()
-    owns_staging_dir = False
 
-    if args.source_dir:
-        staging_dir = Path(args.source_dir)
-        manifest_path = staging_dir / 'MANIFEST.json'
-        manifest = json.loads(manifest_path.read_text(encoding='utf-8')) if manifest_path.exists() else None
-    elif args.source_url:
-        staging_dir = current_dir.parent / '.aizdravo-update-staging'
-        owns_staging_dir = True
-        if staging_dir.exists():
-            shutil.rmtree(staging_dir)
-        manifest = fetch_remote_staging(args.source_url, staging_dir)
-    else:
-        print('Treba --source-url ili --source-dir.', file=sys.stderr)
-        sys.exit(1)
+    staging_dir = Path(args.source_dir)
+    manifest_path = staging_dir / 'MANIFEST.json'
+    manifest = json.loads(manifest_path.read_text(encoding='utf-8')) if manifest_path.exists() else None
 
     try:
         report = apply_update(current_dir, staging_dir, manifest=manifest, auto_merge_server=args.auto_merge_server)
     except UpdateError as exc:
         print(f'Update prekinut: {exc}', file=sys.stderr)
         sys.exit(1)
-    finally:
-        # staging_dir smo mi napravili (--source-url slučaj) - obriši ga bez
-        # obzira na ishod. Ako je korisnik dao --source-dir, to je NJEGOV
-        # folder, ne diramo ga.
-        if owns_staging_dir and staging_dir.exists():
-            shutil.rmtree(staging_dir)
 
     print(json.dumps(report, indent=2, ensure_ascii=False))
 
