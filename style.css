@@ -436,24 +436,47 @@ body.is-app-fullscreen .fab-menu { display: none; }
 .sidebar-toggle {
   all: unset;
   position: absolute;
-  top: 26px;
-  right: -11px;
+  /* 4.8.2026, treći prolaz - Ognjenov zahtjev: dole ostaje (skroz dole),
+     ali horizontalno sad zavisi od stanja menija - kad je PROŠIREN dugme
+     ide skroz desno (right:16px, isti 16px inset kao .sidebar-ov vlastiti
+     horizontalni padding, samo sa desne strane umjesto lijeve), a kad je
+     SAŽET (.sidebar.is-collapsed niže) centrirano preko uske trake
+     (left:50% + translateX(-50%), radi bez obzira na tačnu širinu sažetog
+     sidebar-a). Prelaz između right i left+transform se ne animira glatko
+     (različiti property-ji) - prihvatljivo, isto kao nav-label fade/shrink
+     koji takođe ne prati --sidebar-w tranziciju uzorak-po-uzorak. */
+  bottom: 16px;
+  right: 16px;
   width: 22px;
   height: 22px;
-  border-radius: 50%;
+  /* Prvi prolaz isti dan - bio border-radius:50% (savršen krug), jedini
+     pravi krug u cijelom dashboardu, sve ostalo (pcard, nav-duplicate,
+     pcard-menu dugmad, board-empty dugmad) koristi 2-3px uglove, pa je
+     krug uvijek djelovao kao da je "zalijepljen" a ne dio istog sistema.
+     4px + suptilna sjenka umjesto golog 1px ruba - čita se kao mali
+     chip, isti vokabular kao ostatak dashboarda. */
+  border-radius: 4px;
   background: var(--sidebar-bg);
   border: 1px solid var(--border);
+  box-shadow: 0 2px 6px rgba(0,0,0,.35);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: var(--text-faint);
   z-index: 4;
-  transition: color .15s ease, border-color .15s ease;
+  transition: color .15s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
 }
 .sidebar-toggle:hover {
   color: var(--accent);
   border-color: rgba(var(--accent-rgb), .5);
+  background: rgba(var(--accent-rgb), .12);
+  box-shadow: 0 2px 8px rgba(0,0,0,.42);
+}
+.sidebar.is-collapsed .sidebar-toggle {
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
 }
 .sidebar-toggle svg {
   width: 12px;
@@ -1318,6 +1341,17 @@ body.is-app-fullscreen .fab-menu { display: none; }
   margin: 0;
 }
 
+/* 4.8.2026 - "Sakrij naslov taba" podešavanje: ikonica+ime nestaju, a
+   .view gubi svoj fiksni gornji padding (64px desktop / 30px mobile) u
+   korist var(--safe-x, 42px) - ISTOG safe prostora koji .view već koristi
+   za lijevu marginu (vidi glavno .view pravilo) - da sekcije počnu gore
+   poravnate sa lijevom ivicom, ne da ostave prazninu gdje je naslov bio.
+   Veća specifičnost (2 klase) namjerno pobjeđuje i .view-ovu bazu i
+   mobilni media-query override na 760px bez ponavljanja tog pravila
+   unutar samog media queryja. */
+.hide-view-heading .view-heading { display: none; }
+.hide-view-heading .view { padding-top: var(--safe-x, 42px); }
+
 /* ---------------- Add-tab modal ---------------- */
 /* Fixed overlay, hidden by default - .is-open (toggled in app.js) is the
    only thing that makes it visible, so there's no flash-of-modal on load
@@ -2160,6 +2194,13 @@ select:focus-visible {
 .pcard:active { cursor: grabbing; }
 .pcard.is-locked,
 .layout-locked .pcard { cursor: default; }
+/* 4.8.2026 - Ognjenov eksperiment: zaključana sekcija gubi okvir u
+   potpunosti (border-color: transparent, ne border: none, da se izbjegne
+   pomjeranje sadržaja za 1.5px kad se border ukloni) - ostaje samo
+   sadržaj, staklena pozadina/blur ostaju netaknuti. Koristi .pcard's
+   postojeći border-color prelaz (vidi glavno .pcard pravilo), pa se
+   dešava glatko, ne naglo. */
+.pcard.is-locked { border-color: transparent; }
 .pcard-inner { top: 38px; }
 .pcard-header {
   position: absolute;

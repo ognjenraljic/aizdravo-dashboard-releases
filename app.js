@@ -691,6 +691,29 @@
     showToast(layoutLocked ? 'Raspored je zaključan.' : 'Raspored je otključan.');
   }
 
+  // Sakrij ikonicu/ime taba na radnoj površini (4.8.2026, Ognjenov zahtjev)
+  // - .view-heading nestaje, a .view-ovo padding-top pada na var(--safe-x)
+  // (isti safe prostor kao lijevo/desno margina, vidi CSS pravilo) umjesto
+  // fiksnih 64px/30px - sekcije tako počinju gore, poravnate sa lijevom
+  // ivicom umjesto da ostave prazninu gdje je naslov bio.
+  const HIDE_VIEW_HEADING_KEY = 'aizdravo:hide-view-heading';
+  let hideViewHeading = false;
+  try {
+    hideViewHeading = localStorage.getItem(HIDE_VIEW_HEADING_KEY) === '1';
+  } catch (err) {
+    hideViewHeading = false;
+  }
+  document.documentElement.classList.toggle('hide-view-heading', hideViewHeading);
+
+  function setHideViewHeading(hide, persist = true) {
+    hideViewHeading = !!hide;
+    document.documentElement.classList.toggle('hide-view-heading', hideViewHeading);
+    const toggle = document.getElementById('hideViewHeadingToggle');
+    if (toggle) toggle.setAttribute('aria-checked', String(hideViewHeading));
+    if (persist) persistValue(HIDE_VIEW_HEADING_KEY, hideViewHeading ? '1' : '0');
+    showToast(hideViewHeading ? 'Ikonica i ime taba su sakriveni.' : 'Ikonica i ime taba su prikazani.');
+  }
+
   // Phase offset (in px, always in (-GRID, 0]) that shifts the raw dot
   // grid math (c * GRID, r * GRID) onto the SAME dots the background
   // actually paints. Kept at 0,0 until the board section computes the
@@ -1865,7 +1888,17 @@
           // .pcard-delete added 21.7.2026 - same reasoning as .pcard-edge,
           // a pointerdown that actually landed on the delete button
           // shouldn't ALSO be interpreted as picking the card up to drag.
-          filter: '.pcard-edge, .pcard-menu, .pcard-menu-toggle, .pcard-inner button, .pcard-inner input, .pcard-inner select, .pcard-inner textarea, .pcard-inner a',
+          // .pcard.is-locked added 4.8.2026 - onMove() below already
+          // blocked a locked card from actually being REORDERED, but by
+          // then Sortable had already started the drag (ghost/dragClass
+          // clone lift) since `draggable: '.pcard'` matches locked cards
+          // too - Ognjen saw that as "still visually draggable" even
+          // though the drop was rejected. Sortable's filter is checked via
+          // closest() from the real pointerdown target up to the card, so
+          // this stops the drag from ever starting on a locked card,
+          // re-evaluated live against the current is-locked class on every
+          // pointerdown (not a one-time snapshot at Sortable.create time).
+          filter: '.pcard-edge, .pcard-menu, .pcard-menu-toggle, .pcard-inner button, .pcard-inner input, .pcard-inner select, .pcard-inner textarea, .pcard-inner a, .pcard.is-locked',
           // false (30.7.2026 bug fix) - `filter` already stops Sortable
           // from treating a pointerdown on these elements as a drag start;
           // `preventOnFilter: true` (Sortable's default) ADDITIONALLY
@@ -1975,6 +2008,7 @@
   const settingsVodiciBtn = document.getElementById('settingsVodiciBtn');
   const gridToggle = document.getElementById('gridToggle');
   const layoutLockToggle = document.getElementById('layoutLockToggle');
+  const hideViewHeadingToggle = document.getElementById('hideViewHeadingToggle');
   const modeToggle = document.getElementById('modeToggle');
   const resetDashboard = document.getElementById('resetDashboard');
   const settingsVersionEl = document.getElementById('settingsVersion');
@@ -2039,6 +2073,7 @@
   function syncGridToggle() {
     if (gridToggle) gridToggle.setAttribute('aria-checked', String(gridVisible));
     if (layoutLockToggle) layoutLockToggle.setAttribute('aria-checked', String(layoutLocked));
+    if (hideViewHeadingToggle) hideViewHeadingToggle.setAttribute('aria-checked', String(hideViewHeading));
     if (modeToggle) modeToggle.setAttribute('aria-checked', String(activeMode === 'light'));
   }
 
@@ -2188,6 +2223,7 @@
     });
   }
   if (layoutLockToggle) layoutLockToggle.addEventListener('click', () => setLayoutLocked(!layoutLocked));
+  if (hideViewHeadingToggle) hideViewHeadingToggle.addEventListener('click', () => setHideViewHeading(!hideViewHeading));
   if (modeToggle) modeToggle.addEventListener('click', () => setMode(activeMode === 'light' ? 'dark' : 'light'));
 
   if (resetDashboard) resetDashboard.addEventListener('click', async () => {
