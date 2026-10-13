@@ -122,11 +122,11 @@
 
     <section class="view is-active" data-view="home" id="view-home">
       <!-- Welcome wizard (23.7.2026, zamijenio stari showcase grid + board na
-           ovom tabu) - Ognjenov zahtjev: uvodni tab NIJE klasičan radni tab
+           ovom tabu) - autorov zahtjev: uvodni tab NIJE klasičan radni tab
            (ne prima sekcije/widgete, vidi requestAddSection()/
            addWidgetToActiveTab() guard u app.js), nego karusel sa strelicama
            i tačkicama. JS kontroler: initWelcomeWizard() u app.js. -->
-      <!-- Treći prolaz 23.7.2026 (Ognjenov feedback poslije drugog
+      <!-- Treći prolaz 23.7.2026 (autorov feedback poslije drugog
            redizajna istog dana): logo + "Dobrodošli" tekst su sad INLINE sa
            naslovom trenutnog koraka (jedan kompaktan zaglavni red - h2 više
            NIJE dupliran u svakom koraku, nego JEDAN dijeljen #wizardStepTitle
@@ -168,7 +168,7 @@
 
           <div class="wizard-slides" id="wizardSlides">
 
-            <!-- 0/7 Pokretanje - preurađeno 27.7.2026 (Ognjenov zahtjev:
+            <!-- 0/7 Pokretanje - preurađeno 27.7.2026 (autorov zahtjev:
                  uvećaj elemente i neka su STALNO vidljivi - stara verzija je
                  "otkrivala" kvačicu/browser preko animacije koja se na kraju
                  6s petlje vraćala na nevidljivo, izgledalo je kao da nestaju).
@@ -259,7 +259,7 @@
               </div>
             </div>
 
-            <!-- 3/7 Napravi svoj alat - preurađeno 27.7.2026 (Ognjenov
+            <!-- 3/7 Napravi svoj alat - preurađeno 27.7.2026 (autorov
                  zahtjev: prikaži KAKO se stvarno dodaje alat, ne apstraktnu
                  "ime + ikonica" formu koja u stvarnoj arhitekturi ne
                  postoji - alati se uvijek dodaju kroz kod: apps/<id>/app.js
@@ -269,7 +269,7 @@
                  gotovog fajla (folder već postoji, npr. sa drugog
                  dashboarda) - oba završe u istom apps/ folderu + registraciji
                  u index.html, .claude/skills/install-app to i radi. Premješteno
-                 27.7.2026 (Ognjenov zahtjev) da ide ODMAH poslije kataloga i
+                 27.7.2026 (autorov zahtjev) da ide ODMAH poslije kataloga i
                  PRIJE "Otvaranje aplikacije" - logičniji redoslijed priče
                  (prvo dodaš alat, onda vidiš šta se dešava kad ga otvoriš). -->
             <div class="wizard-mockup wizard-mockup--build" data-step="3" aria-hidden="true">
@@ -364,7 +364,7 @@
             </div>
 
             <!-- 6/7 Backup i prenos - ikonica promijenjena sa "database"
-                 (backup-fajl) na "folder" 27.7.2026 (Ognjenov zahtjev:
+                 (backup-fajl) na "folder" 27.7.2026 (autorov zahtjev:
                  prenos je kopiranje CIJELOG foldera, ne export/import
                  fajla - export/import backup dugmad su uklonjena iz
                  Podešavanja iz istog razloga, vidi taj settings-section). -->
@@ -395,7 +395,7 @@
       <!-- Skriven "board" (23.7.2026) - postoji SAMO da zajednička board
            infrastruktura (GRID/dot-phase/initBoard tvornica u app.js)
            ima gdje da se zakači; Home tab više NIJE klasičan radni tab
-           (Ognjenov zahtjev) - sekcije/widgeti se ovdje ne mogu dodati
+           (autorov zahtjev) - sekcije/widgeti se ovdje ne mogu dodati
            (blokirano u JS-u), ovaj div nikad nije vidljiv korisniku.
            NIJE display:none (to bi mu obulilo geometriju na 0 i
            poremetilo dot-grid fazu za SVE ostale tabove koji je dijele)
@@ -607,6 +607,10 @@
       <div class="apps-mode" role="tablist" aria-label="Prikaz kataloga">
         <button class="apps-mode-btn is-active" id="appsModeApps" type="button" role="tab" aria-selected="true">Aplikacije</button>
         <button class="apps-mode-btn" id="appsModeWidgets" type="button" role="tab" aria-selected="false">Widgeti</button>
+        <!-- AI Zdravo katalog (v1.7.0) - alati sa platforme, instalacija
+             jednim klikom. Puni ga AI asistent preko AI Zdravo MCP-a
+             (skill katalog -> tools/katalog.py), vidi renderPlatformGrid(). -->
+        <button class="apps-mode-btn" id="appsModePlatform" type="button" role="tab" aria-selected="false">AI Zdravo</button>
       </div>
     </div>
     <div class="apps-grid" id="appsGrid"></div>
@@ -639,7 +643,7 @@
     <h2 id="addTabTitle">Novi tab</h2>
     <!-- Tip sekcije (23.7.2026) - vidljiv SAMO u 'add-section' modu.
          "Prazna (custom)" je dosadašnje ponašanje: imenovana prazna
-         sekcija koju korisnik (ili Ognjen u videu) puni kroz
+         sekcija koju korisnik (ili autor u videu) puni kroz
          Claude/Codex, bez veze sa registrom alata. "Folder" pravi
          quick-launch sekciju sa pločicama izabranih aplikacija.
          Widgeti se namjerno NE dodaju odavde nego iz Aplikacije
@@ -700,7 +704,7 @@
 
 <!-- Poveži alat sa sekcijom (26.7.2026) - pretvara PRAZNU custom
      sekciju u widget instancu ISTOG alata na LICU MJESTA: isti id,
-     ista pozicija u redoslijedu, isti colSpan/rowSpan koji je Ognjen
+     ista pozicija u redoslijedu, isti colSpan/rowSpan koji je autor
      već ručno podesio. Namjerno odvojeno od velikog addTab modala
      (koji ionako služi mnogim, međusobno nepovezanim modovima) - isti
      kompaktan, samostalan obrazac kao moveSectionOverlay iznad. -->

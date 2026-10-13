@@ -38,6 +38,10 @@ CORE_FILES = [
     '.agents/skills/install-app/SKILL.md',
     '.agents/skills/update-dashboard/SKILL.md',
     '.agents/skills/build-app/SKILL.md',
+    # AI Zdravo katalog alata (v1.7.0).
+    '.claude/skills/katalog/SKILL.md',
+    '.agents/skills/katalog/SKILL.md',
+    'tools/katalog.py',
     'tools/dashboard_updater.py',
     'MANIFEST.json',
 ]
@@ -48,6 +52,7 @@ NEVER_TOUCH = {
     'dashboard-state.json', 'apps',
     '.aizdravo-welcomed', 'dashboard.pid',
     'dashboard-autostart.log', 'errors.jsonl',
+    '.katalog',  # katalog i keš zipova su per-korisnik (tools/katalog.py)
 }
 
 # Kratke, stabilne podniske - otporne na promjenu broja "=" znakova ili
@@ -142,6 +147,30 @@ def backup_folder(current_dir):
     return backup_dir
 
 
+def _is_safe_extra(rel):
+    """Fajl iz MANIFEST-a nove verzije koji nije u CORE_FILES ove (starije)
+    skripte: samo obična relativna putanja van korisnikovih podataka."""
+    if not isinstance(rel, str) or not rel or rel.startswith('/') or '\\' in rel or ':' in rel:
+        return False
+    parts = rel.split('/')
+    if '..' in parts or '' in parts:
+        return False
+    return parts[0] not in NEVER_TOUCH and parts[0] not in ('_apps_archive', '.katalog', '.git')
+
+
+def update_file_list(manifest):
+    """CORE_FILES + fajlovi koje NOVA verzija navodi u svom MANIFEST.json
+    (v1.7.0, 13.10.2026). Bez ovoga stara skripta prenese samo fajlove koje
+    ona zna, pa novi core fajl (npr. tools/katalog.py u 1.7.0) ostane iza
+    dok se update ne pokrene drugi put. Manifest fajlovi su već provjereni
+    SHA-256 u verify_manifest."""
+    files = list(CORE_FILES)
+    for rel in (manifest or {}):
+        if rel not in files and _is_safe_extra(rel):
+            files.append(rel)
+    return files
+
+
 def apply_update(current_dir, staging_dir, manifest=None, auto_merge_server=False):
     """Primijeni core update iz staging_dir na current_dir. Ako je
     `manifest` dat, provjerava SHA-256 svakog fajla PRIJE bilo čega.
@@ -177,7 +206,7 @@ def apply_update(current_dir, staging_dir, manifest=None, auto_merge_server=Fals
     backup_dir = backup_folder(current_dir)
 
     applied = []
-    for rel in CORE_FILES:
+    for rel in update_file_list(manifest):
         src = staging_dir / rel
         if not src.exists():
             continue

@@ -19,3 +19,7 @@ dashboard-autostart.log
 # proizvoda.
 _apps_archive/*
 !_apps_archive/.gitkeep
+
+# AI Zdravo katalog (v1.7.0) - katalog.json i keš zipova sa platforme,
+# per-korisnik, puni ga tools/katalog.py.
+.katalog/

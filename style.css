@@ -436,7 +436,7 @@ body.is-app-fullscreen .fab-menu { display: none; }
 .sidebar-toggle {
   all: unset;
   position: absolute;
-  /* 4.8.2026, treći prolaz - Ognjenov zahtjev: dole ostaje (skroz dole),
+  /* 4.8.2026, treći prolaz - autorov zahtjev: dole ostaje (skroz dole),
      ali horizontalno sad zavisi od stanja menija - kad je PROŠIREN dugme
      ide skroz desno (right:16px, isti 16px inset kao .sidebar-ov vlastiti
      horizontalni padding, samo sa desne strane umjesto lijeve), a kad je
@@ -491,7 +491,7 @@ body.is-app-fullscreen .fab-menu { display: none; }
 }
 
 /* .brand/.brand-mark/.brand-word (logo + "AI Zdravo" iznad nav liste)
-   uklonjeni 23.7.2026 na Ognjenov zahtjev - nav itemi sad kreću od
+   uklonjeni 23.7.2026 na autorov zahtjev - nav itemi sad kreću od
    samog vrha sidebar-a. Gornja traka (top-tab-bar) sad nosi brend
    identitet (customizable u Podešavanja, vidi "Gornja traka" sekciju). */
 
@@ -533,7 +533,7 @@ body.is-app-fullscreen .fab-menu { display: none; }
      transition list, so width snapped INSTANTLY the moment .is-collapsed
      was toggled while the sidebar box itself was still ~300ms into
      shrinking - text vanished into a still-wide sidebar, then the box
-     caught up around empty space. Confirmed live: Ognjen reported
+     caught up around empty space. Confirmed live: the author reported
      collapse feeling abrupt while expand felt smooth - same root cause
      works FOR you on the way back (label pops in cleanly right as the
      box finishes growing, not visibly snapping partway through empty
@@ -782,7 +782,7 @@ body.is-app-fullscreen .fab-menu { display: none; }
   /* NO CSS background-image dot grid (removed 20.7.2026, fourth round).
      Three earlier attempts (white low-opacity, amber low-opacity, no
      static grid at all) all still left a gap between "every numeric check
-     passes" and "looks identical on Ognjen's real Retina display" -
+     passes" and "looks identical on the author's real Retina display" -
      because the static dots (CSS background-image radial-gradient tiling)
      and the hover-lit dots (canvas arc-fill in app.js) were always two
      genuinely different rendering engines, even when fed the exact same
@@ -814,7 +814,7 @@ body.is-app-fullscreen .fab-menu { display: none; }
 
 /* A fractal-noise dither overlay lived here briefly (20.7.2026) as a
    second banding fix on top of the 4-stop gradient above - removed the
-   same day. Ognjen flagged it live: at native Retina resolution it
+   same day. the author flagged it live: at native Retina resolution it
    rendered as its own visible fine dot texture across the whole
    background, reading as a confusing SECOND grid layered under the real
    28px one, not as imperceptible dither. The 4-stop gradient alone is the
@@ -866,7 +866,7 @@ body.is-app-fullscreen .fab-menu { display: none; }
 .view.is-active { display: block; }
 
 /* ---------------- Wizard heading (23.7.2026, četvrti prolaz) ----------------
-   Ognjenova druga ispravka: prošli pokušaj je stavio naslov trenutnog
+   autorova druga ispravka: prošli pokušaj je stavio naslov trenutnog
    koraka DESNO od hero-a, na istom redu preko divider linije - to
    takođe nije bilo traženo. Naslov (#wizardStepTitle) ide ISPOD hero-a
    (logo + "Dobrodošli..." + "Kratak vodič..."), left-aligned, počinje
@@ -932,7 +932,7 @@ body.is-app-fullscreen .fab-menu { display: none; }
   text-wrap: balance;
 }
 @media (min-width: 1101px) {
-  /* Ognjenov zahtjev 28.7.2026 - naslov u jednoj liniji na širim ekranima.
+  /* autorov zahtjev 28.7.2026 - naslov u jednoj liniji na širim ekranima.
      NE spuštati granicu ispod 1101px - testirano uživo na 768px (tablet)
      i tekst se siječe na desnoj ivici (nema dovoljno prostora za punu
      dužinu bez preloma), na 375px (mobilni) izlazi potpuno van ekrana.
@@ -1002,7 +1002,7 @@ body.is-app-fullscreen .fab-menu { display: none; }
      half a GRID step, so it WOULD land on the finer sub-grid added the
      same day) put a real dot under both edges but made the total gap
      between two cards 28px (14+14, since each contributes its own
-     margin) - Ognjen flagged that as reading like a whole skipped column,
+     margin) - the author flagged that as reading like a whole skipped column,
      too far apart. Right/bottom-only margin sidesteps the "each neighbor
      adds its own margin" doubling: the leading (left/top) edge sits
      flush on the true GRID line (0 margin there) same as the original
@@ -1022,7 +1022,7 @@ body.is-app-fullscreen .fab-menu { display: none; }
      and resize still snaps to the same steps. */
   margin: 0 14px 14px 0;
   border-radius: 2px;
-  /* Solid u normalnom radu (27.7.2026, Ognjenov zahtjev - isprekidana
+  /* Solid u normalnom radu (27.7.2026, autorov zahtjev - isprekidana
      linija + debele resize ivice su ranije bile stalno vidljive na
      hover, izgledalo je "uvijek u modu za uređivanje"). Isprekidana
      linija se sad pojavljuje SAMO u .is-editing modu (dugme "Uredi" u
@@ -1073,7 +1073,7 @@ body.is-app-fullscreen .fab-menu { display: none; }
    strip straddling each resizable edge, not a single corner handle - so
    dragging the RIGHT edge changes ONLY width, dragging the BOTTOM edge
    changes ONLY height, each snapping live to whole GRID steps in exactly
-   the direction dragged, per Ognjen's ask. Centered on the edge (-6px to
+   the direction dragged, per the author's ask. Centered on the edge (-6px to
    +6px) for a comfortable hit target without needing to land pixel-exact
    on the 1.5px border. */
 .pcard-edge {
@@ -1275,7 +1275,7 @@ body.is-app-fullscreen .fab-menu { display: none; }
   transition: color .2s ease;
 }
 
-/* 27.7.2026 - bilo golo .pcard:hover (svaka sekcija, uvijek) - Ognjenov
+/* 27.7.2026 - bilo golo .pcard:hover (svaka sekcija, uvijek) - autorov
    zahtjev da se akcentna ivica/pozadina-tint ("cijeli tab svijetli") NE
    pojavljuje u normalnom radu, samo dok je sekcija u modu uređivanja
    (isti .is-editing koji već kontroliše isprekidanu ivicu i resize
@@ -2194,7 +2194,7 @@ select:focus-visible {
 .pcard:active { cursor: grabbing; }
 .pcard.is-locked,
 .layout-locked .pcard { cursor: default; }
-/* 4.8.2026 - Ognjenov eksperiment: zaključana sekcija gubi okvir u
+/* 4.8.2026 - autorov eksperiment: zaključana sekcija gubi okvir u
    potpunosti (border-color: transparent, ne border: none, da se izbjegne
    pomjeranje sadržaja za 1.5px kad se border ukloni) - ostaje samo
    sadržaj, staklena pozadina/blur ostaju netaknuti. Koristi .pcard's
@@ -2319,7 +2319,7 @@ select:focus-visible {
 .pcard.is-collapsed { grid-row: span 2 !important; min-height:42px; }
 .pcard.is-collapsed .pcard-inner,
 .pcard.is-collapsed .pcard-edge { display:none; }
-/* 27.7.2026 - bilo opacity:.28 (blijedo ali i dalje vidljivo) - Ognjenov
+/* 27.7.2026 - bilo opacity:.28 (blijedo ali i dalje vidljivo) - autorov
    zahtjev da zaključana sekcija u potpunosti sakrije debele resize
    linije, ne samo izblijedi ih. */
 .pcard.is-locked .pcard-edge { opacity: 0; pointer-events: none; }
@@ -2484,7 +2484,7 @@ select:focus-visible {
   color: var(--text);
 }
 
-/* ---- "Prava app ikonica" komponenta (23.7.2026, Ognjenov zahtjev) ----
+/* ---- "Prava app ikonica" komponenta (23.7.2026, autorov zahtjev) ----
    Jedan vizuelni jezik za "ovo je aplikacija" kroz cijeli dashboard:
    veliki obojen kvadrat (iOS-squircle aproksimacija preko border-radius
    procenta) + ikonica u sredini, isti token u katalogu, folder
@@ -2633,6 +2633,122 @@ select:focus-visible {
    pregled + size pilule, umjesto samo ikonica+ime kao Aplikacije. */
 .apps-grid.is-widgets-mode { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
 .apps-no-results { grid-column: 1 / -1; margin: 8px 0; color: var(--text-soft); font-size: 13px; }
+
+/* AI Zdravo katalog (v1.7.0) - kartice alata sa platforme, instalacija
+   jednim klikom. Vidi renderPlatformGrid() u app.js. */
+.apps-grid.is-platform-mode {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+.katalog-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-soft);
+  font-size: 12px;
+  padding: 0 2px 2px;
+}
+.katalog-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: rgba(255,255,255,.03);
+  color: var(--text-soft);
+  padding: 6px 10px;
+  cursor: pointer;
+  font: 600 11.5px/1 "Inter", sans-serif;
+}
+.katalog-refresh svg { width: 13px; height: 13px; }
+.katalog-refresh:hover, .katalog-refresh:focus-visible {
+  border-color: rgba(var(--accent-rgb), .6);
+  background: rgba(var(--accent-rgb), .12);
+  color: var(--text);
+}
+.katalog-card {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: rgba(255,255,255,.015);
+}
+.katalog-card:hover { border-color: rgba(var(--accent-rgb), .35); }
+.katalog-card-top { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.katalog-card-title { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.katalog-card-title strong {
+  color: var(--text);
+  font: 600 13px/1.2 "Inter", sans-serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.katalog-version { color: var(--text-faint); font: 500 11px/1 "Inter", sans-serif; }
+.katalog-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.katalog-badge {
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 3px 6px;
+  color: var(--text-soft);
+  font: 600 10px/1 "Inter", sans-serif;
+}
+.katalog-badge.is-server { border-color: rgba(var(--accent-rgb), .45); color: var(--accent-highlight); cursor: help; }
+.katalog-desc {
+  flex: 1;
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.katalog-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.katalog-link {
+  color: var(--text-faint);
+  font-size: 11px;
+  text-decoration: none;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.katalog-link:hover { color: var(--accent); text-decoration: underline; }
+.katalog-action { flex: none; padding: 7px 12px; font-size: 12px; margin-left: auto; }
+.katalog-action:disabled { opacity: .6; cursor: default; }
+.katalog-card.is-installed .katalog-action { background: transparent; }
+.katalog-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px dashed var(--border);
+  border-radius: 3px;
+  padding: 22px;
+}
+.katalog-empty strong { color: var(--text); font-size: 14px; }
+.katalog-empty span { color: var(--text-soft); font-size: 12px; line-height: 1.55; max-width: 60ch; }
+.katalog-empty code {
+  background: rgba(255,255,255,.06);
+  border-radius: 2px;
+  padding: 4px 8px;
+  color: var(--text);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+}
+.katalog-note { grid-column: 1 / -1; margin: 4px 0 0; color: var(--text-faint); font-size: 11.5px; }
+@media (max-width: 560px) {
+  .katalog-head { flex-direction: column; align-items: flex-start; }
+}
 
 .app-tile--widget {
   display: flex;
@@ -2940,7 +3056,7 @@ select:focus-visible {
 
 /* ---------------- Welcome wizard (23.7.2026, treći prolaz) ----------------
    Home tab je karusel od 7 koraka umjesto klasičnog radnog taba
-   (Ognjenov zahtjev). Ovo je treći redizajn istog dana - po feedback-u
+   (autorov zahtjev). Ovo je treći redizajn istog dana - po feedback-u
    poslije drugog prolaza: naslov+opis su izvučeni IZ mockup boxa (žive u
    .wizard-heading/.wizard-desc, sinhronizovani preko app.js), pa je box
    sam sad position:absolute;inset:0 unutar .wizard-slides - garantovano
@@ -2974,7 +3090,7 @@ select:focus-visible {
    visinu - i time poziciju strelica - konstantnom bez obzira koji
    korak je aktivan. */
 .wizard-desc { flex: none; margin-bottom: 16px; min-height: 100px; }
-/* max-width uklonjen (24.7.2026, Ognjenov zahtjev) - 74ch je umjetno
+/* max-width uklonjen (24.7.2026, autorov zahtjev) - 74ch je umjetno
    sužavao opis dok je box ispod već pun širine kolone. Bez ograničenja,
    opis ide do iste desne (safe) ivice kao box - i uzgred prelama u MANJE
    redova na širokim ekranima, što dodatno stabilizuje visinu opisa. */
@@ -3036,7 +3152,7 @@ select:focus-visible {
 
 /* -- 0/7: Pokretanje u Claude Code / Codex - folder-stablo, Python
    provjera, mini browser. 27.7.2026: elementi su UVIJEK vidljivi (bez
-   pojavi-pa-nestani animacije - Ognjenov zahtjev nakon što je "treći
+   pojavi-pa-nestani animacije - autorov zahtjev nakon što je "treći
    korak" (browser) izgledao kao da nestaje na kraju svake petlje) i
    generalno veći - ovo je prvi utisak gledaoca, treba se lako čitati
    bez čekanja da se nešto "otkrije". -- */
@@ -3241,7 +3357,7 @@ select:focus-visible {
    daleko od teksta. Sad sjedi odmah pored imena, u istom gap-u kao
    ikonica-tekst, cijeli klaster (ikonica+ime+×) centriran zajedno. */
 .wm-toptab-x { flex: none; font-style: normal; font-size: 15px; line-height: 1; opacity: .45; margin-left: 2px; }
-/* Cijela petlja (23.7.2026, druga ispravka kursora, Ognjenov zahtjev):
+/* Cijela petlja (23.7.2026, druga ispravka kursora, autorov zahtjev):
    poslije klika na app ikonicu kursor NE ide odmah na X - vraća se na
    NEUTRALNU sredinu i tu miruje (kao da "gleda" otvoren widget), pa tek
    kad je vrijeme za zatvaranje ide gore do X i klikne. Putanje između
@@ -3265,7 +3381,7 @@ select:focus-visible {
 /* Vanjski kontejner OSTAJE tačno tab-širine (21%) - to je i dalje
    neophodno za translateX(100%+gap) self-relative trik ispod. Vidljiva
    narandžasta linija je sad UNUTRAŠNJI centriran bar (24.7.2026,
-   Ognjenov zahtjev - linija je pokrivala CIJELU širinu taba, praznu
+   autorov zahtjev - linija je pokrivala CIJELU širinu taba, praznu
    prostoriju uključujući, umjesto samo ispod ikonice+imena) - kontejner
    sam je proziran, samo pozicionira/kliza, `.wm-toptab-indicator-bar`
    je stvarna narandžasta linija, uža i centrirana preko flex
@@ -3330,7 +3446,7 @@ select:focus-visible {
   animation: wm-cursor-path 8s ease-in-out infinite;
 }
 .wm-opentab-cursor svg { width: 100%; height: 100%; }
-/* Potpuno pojednostavljeno (24.7.2026, treći pokušaj - Ognjenov zahtjev
+/* Potpuno pojednostavljeno (24.7.2026, treći pokušaj - autorov zahtjev
    da se kopira Canva-stil tutorijal kursor). Sva tri ranija pokušaja
    (jedna "krivina" tačka, pa 4-tačkasta Bezier kriva sa per-tačka
    easing-om, pa manja amplituda te iste krive) su i dalje izgledala
@@ -3386,7 +3502,7 @@ select:focus-visible {
 
 /* -- 4/7: Tvoj stil - swatch red (svaka pulsira redom) PLUS mini "live"
    prozor: kartica-border i akcentna tekst-linija SMOOTHLY prelaze boju
-   (obična ease interpolacija, ne steps() skok - Ognjenov zahtjev), i
+   (obična ease interpolacija, ne steps() skok - autorov zahtjev), i
    umjesto lažnog "Dugme" teksta stoji samo obojena linija (isti mockup-
    teksta stil kao siva dva reda iznad nje, samo u akcentnoj boji). -- */
 .wizard-mockup--colors { gap: 40px; }
@@ -3500,7 +3616,7 @@ select:focus-visible {
 }
 
 /* -- 6/7: Napravi svoj alat - podijeljeno u DVA flow-a (nova aplikacija
-   / novi widget) jer su to dva različita puta (Ognjenov zahtjev), sa
+   / novi widget) jer su to dva različita puta (autorov zahtjev), sa
    dijeljenim "AI gradi" trakom ispod (kod kuca + Claude/Codex chipovi,
    namjerno GENERIČNE ikonice + tekst, ne lažni brend logoi). -- */
 .wizard-mockup--build { flex-direction: column; align-items: stretch; justify-content: center; gap: 24px; max-width: 640px; margin: 0 auto; }

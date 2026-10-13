@@ -319,8 +319,8 @@
 
   // Jednokratna migracija (23.7.2026): Home tab je do sada bio klasičan
   // radni tab (mogao je imati sekcije) - sad je welcome wizard i NIKAD
-  // više ne prima sekcije/widgete (Ognjenov zahtjev). Bilo šta što je
-  // ranije stajalo na Home boardu (npr. Ognjenova stvarna "yuo" test
+  // više ne prima sekcije/widgete (autorov zahtjev). Bilo šta što je
+  // ranije stajalo na Home boardu (npr. autorova stvarna "yuo" test
   // kartica) se NE briše - prebacuje se na prvi drugi postojeći tab,
   // JEDNOM, prije nego board bootstrap ispod uopšte pokuša učitati
   // Home-ov (sad trajno skriveni) board. Ako još ne postoji nijedan
@@ -384,7 +384,7 @@
     'elektricni-san',
   ]);
   let activeTheme = 'ai-zdravo';
-  // Lista (27.7.2026, Ognjenov zahtjev - "opcija da se doda i vise od
+  // Lista (27.7.2026, autorov zahtjev - "opcija da se doda i vise od
   // jedne") umjesto ranijeg pojedinačnog customTheme objekta. Svaka
   // stavka: { id, name, accent }.
   let customThemes = [];
@@ -691,7 +691,7 @@
     showToast(layoutLocked ? 'Raspored je zaključan.' : 'Raspored je otključan.');
   }
 
-  // Sakrij ikonicu/ime taba na radnoj površini (4.8.2026, Ognjenov zahtjev)
+  // Sakrij ikonicu/ime taba na radnoj površini (4.8.2026, autorov zahtjev)
   // - .view-heading nestaje, a .view-ovo padding-top pada na var(--safe-x)
   // (isti safe prostor kao lijevo/desno margina, vidi CSS pravilo) umjesto
   // fiksnih 64px/30px - sekcije tako počinju gore, poravnate sa lijevom
@@ -811,7 +811,7 @@
   // canvas's internal coordinate space no longer matches its rendered
   // CSS size, so the browser stretches the drawn content to fit - every
   // dot (and the cursor-tracked glow) ends up visibly offset from where
-  // the mouse actually is. Confirmed live: Ognjen reported exactly this
+  // the mouse actually is. Confirmed live: the author reported exactly this
   // after collapsing the sidebar.
   let resizeFxOverlay = () => {};
 
@@ -983,7 +983,7 @@
   // used to live here (per-card {col,row} spans, resize-by-dragging-a-
   // corner-handle, SortableJS drag-reorder, the localStorage layout
   // schema, the FLIP reflow helper for resize) is DELETED, not just
-  // disabled - Ognjen wants to rebuild section behavior from scratch as
+  // disabled - the author wants to rebuild section behavior from scratch as
   // its own deliberate design pass, not keep patching the old mechanic.
   // What's left is only the board/grid PLATFORM those old mechanics sat
   // on top of: board width + column count, and keeping the visible dot
@@ -1516,7 +1516,7 @@
           }
         }
         // Poveži alat sa sekcijom (26.7.2026) - samo za praznu custom
-        // sekciju (Ognjenov zahtjev: kad on napravi i podesi veličinu
+        // sekciju (autorov zahtjev: kad on napravi i podesi veličinu
         // sekcije, taj alat treba PREUZETI tu istu poziciju/veličinu,
         // ne dobiti novu odvojenu karticu iz kataloga). Dugme se
         // uklanja poslije uspješnog povezivanja (openAttachAppModal
@@ -1801,7 +1801,7 @@
         // prevlačenja bio), umjesto uvijek na kraj. grid-auto-flow:dense
         // (postojeći CSS) sam pakuje u prvo stvarno slobodno mjesto po
         // izgledu - ovo samo bira gdje u REDOSLIJEDU sekcija, ne piksel
-        // poziciju (Ognjenov eksplicitan zahtjev: korisnik ne bira tačnu
+        // poziciju (autorov eksplicitan zahtjev: korisnik ne bira tačnu
         // ćeliju, samo približno mjesto među sekcijama, kao reorder).
         if (options.insertBefore && options.insertBefore.parentNode === boardEl) {
           boardEl.insertBefore(card, options.insertBefore);
@@ -1892,7 +1892,7 @@
           // blocked a locked card from actually being REORDERED, but by
           // then Sortable had already started the drag (ghost/dragClass
           // clone lift) since `draggable: '.pcard'` matches locked cards
-          // too - Ognjen saw that as "still visually draggable" even
+          // too - the author saw that as "still visually draggable" even
           // though the drop was rejected. Sortable's filter is checked via
           // closest() from the real pointerdown target up to the card, so
           // this stops the drag from ever starting on a locked card,
@@ -2037,7 +2037,7 @@
   const HOME_NAME_KEY = 'aizdravo:home-name';
   const WELCOME_TAB_MIGRATED_KEY = 'aizdravo:welcome-tab-migrated';
   // Gornja traka - customizable ikonica/naziv "Dashboard" kartice
-  // (23.7.2026, Ognjenov zahtjev). 'ai-zdravo-logo' je isti sentinel
+  // (23.7.2026, autorov zahtjev). 'ai-zdravo-logo' je isti sentinel
   // koji Home tab koristi za "stvaran logo asset umjesto tabler ikone".
   const TOPBAR_ICON_KEY = 'aizdravo:topbar-icon';
   const TOPBAR_LABEL_KEY = 'aizdravo:topbar-label';
@@ -2048,6 +2048,7 @@
   const appsTitle = document.getElementById('appsTitle');
   const appsModeApps = document.getElementById('appsModeApps');
   const appsModeWidgets = document.getElementById('appsModeWidgets');
+  const appsModePlatform = document.getElementById('appsModePlatform');
   const appsGrid = document.getElementById('appsGrid');
   const appsEmpty = document.getElementById('appsEmpty');
   const appsInstallBtn = document.getElementById('appsInstallBtn');
@@ -2114,7 +2115,7 @@
     });
   }
 
-  // Svaka sopstvena tema dobija SVOJU karticu (27.7.2026, Ognjenov
+  // Svaka sopstvena tema dobija SVOJU karticu (27.7.2026, autorov
   // zahtjev - "moze se jos jedna kartica dodati"), renderovanu dinamički
   // (isti princip kao dinamičan katalog alata) umjesto jedne statične
   // kartice u index.html. div (ne button, ista disciplina kao apps-catalog-tile
@@ -2524,7 +2525,7 @@
     async function removeTab(id) {
       const section = document.querySelector('.view[data-view="' + id + '"]');
       // "ima nešto u tom tabu" = has at least one card on its board -
-      // only reason to warn before deleting, per Ognjen's ask.
+      // only reason to warn before deleting, per the author's ask.
       const hasCards = !!(section && section.querySelector('.pcard'));
       if (hasCards) {
         const tabMeta = loadTabs().find(tab => tab.id === id);
@@ -2784,7 +2785,7 @@
     requestAddSection = () => {
       setFabMenuOpen(false);
       // Home tab je welcome wizard, ne prima sekcije (23.7.2026,
-      // Ognjenov zahtjev) - blokirano OVDJE, prije modal otvaranja, da
+      // autorov zahtjev) - blokirano OVDJE, prije modal otvaranja, da
       // korisnik nikad ne popuni formu za nešto što će biti odbijeno.
       const activeView = document.querySelector('.view.is-active');
       if (activeView && activeView.dataset.view === 'home') {
@@ -2886,11 +2887,11 @@
 
     // Poveži alat sa sekcijom (26.7.2026) - pretvara PRAZNU custom
     // sekciju u widget instancu na licu mjesta: card.dataset.id,
-    // colSpan/rowSpan i pozicija u DOM redoslijedu (koje Ognjen ručno
+    // colSpan/rowSpan i pozicija u DOM redoslijedu (koje autor ručno
     // podesi prije nego zamoli da se alat izgradi) ostaju NETAKNUTI -
     // samo se type/appId dodaju i sadržaj se renderuje unutra, umjesto
     // dodavanja nove, odvojene kartice iz kataloga (koja bi uvijek
-    // dobila alat-ov default preset umjesto Ognjenove stvarne veličine).
+    // dobila alat-ov default preset umjesto autorove stvarne veličine).
     let pendingAttachApp = null;
     let attachAppReturnFocus = null;
 
@@ -2969,7 +2970,7 @@
     });
 
     // ---- App stranice (gornja traka kartica, 23.7.2026) ----
-    // Ognjenov ispravak dizajna: aplikacija NIJE red u lijevom
+    // autorov ispravak dizajna: aplikacija NIJE red u lijevom
     // dashboard sidebar-u (prva verzija, istog dana, ranije) - to je
     // potpuno ODVOJENA "browser tab" traka gore. "Dashboard" kartica
     // (uvijek prva, ne zatvara se) prikazuje sve što danas postoji
@@ -3115,7 +3116,7 @@
       if (tabBtn) tabBtn.remove();
       if (page) page.remove();
       saveOpenAppTabs(readOpenAppTabs().filter(id => id !== appId));
-      // Zatvaranje UVIJEK vraća na Dashboard (Ognjenov zahtjev) - ne na
+      // Zatvaranje UVIJEK vraća na Dashboard (autorov zahtjev) - ne na
       // "gdje si bio prije", to pojednostavljenje uklanja cijelu klasu
       // ranijih return-view knjigovodstva jer app stranice više nisu dio
       // dashboard tab sistema.
@@ -3165,7 +3166,7 @@
 
     // ---- Aplikacije panel ----
 
-    let appsMode = 'apps'; // 'apps' | 'widgets'
+    let appsMode = 'apps'; // 'apps' | 'widgets' | 'platform'
     // Cleanup funkcije žive-renderovanih widget pregleda u katalogu
     // (23.7.2026, vidi renderAppsGrid) - moraju se pozvati prije nego
     // se grid ponovo iscrta (search/mode promjena) ili panel zatvori, da
@@ -3177,25 +3178,29 @@
     }
 
     function setAppsMode(mode) {
-      appsMode = mode === 'widgets' ? 'widgets' : 'apps';
-      if (appsModeApps) {
-        appsModeApps.classList.toggle('is-active', appsMode === 'apps');
-        appsModeApps.setAttribute('aria-selected', String(appsMode === 'apps'));
-      }
-      if (appsModeWidgets) {
-        appsModeWidgets.classList.toggle('is-active', appsMode === 'widgets');
-        appsModeWidgets.setAttribute('aria-selected', String(appsMode === 'widgets'));
-      }
+      appsMode = mode === 'widgets' || mode === 'platform' ? mode : 'apps';
+      [[appsModeApps, 'apps'], [appsModeWidgets, 'widgets'], [appsModePlatform, 'platform']].forEach(([btn, key]) => {
+        if (!btn) return;
+        btn.classList.toggle('is-active', appsMode === key);
+        btn.setAttribute('aria-selected', String(appsMode === key));
+      });
       // Naslov i search placeholder prate izabrani prikaz (27.7.2026) -
       // "Katalog" eyebrow ostaje fiksan, h2 ispod njega i placeholder
-      // se mijenjaju Aplikacije <-> Widgeti.
-      if (appsTitle) appsTitle.textContent = appsMode === 'widgets' ? 'Widgeti' : 'Aplikacije';
+      // se mijenjaju Aplikacije <-> Widgeti <-> AI Zdravo.
+      const modeText = {
+        apps: ['Aplikacije', 'Pretraži aplikacije...'],
+        widgets: ['Widgeti', 'Pretraži widgete...'],
+        platform: ['AI Zdravo alati', 'Pretraži alate sa platforme...'],
+      }[appsMode];
+      if (appsTitle) appsTitle.textContent = modeText[0];
       if (appsSearch) {
-        const placeholder = appsMode === 'widgets' ? 'Pretraži widgete...' : 'Pretraži aplikacije...';
-        appsSearch.placeholder = placeholder;
-        appsSearch.setAttribute('aria-label', placeholder.replace('...', ''));
+        appsSearch.placeholder = modeText[1];
+        appsSearch.setAttribute('aria-label', modeText[1].replace('...', ''));
       }
       renderAppsGrid();
+      // Katalog se čita svježe svaki put kad se otvori AI Zdravo prikaz -
+      // AI asistent ga je možda osvježio dok je panel bio zatvoren.
+      if (appsMode === 'platform') loadPlatformKatalog();
     }
 
     function addWidgetToActiveTab(app, sizeKey) {
@@ -3239,12 +3244,12 @@
     }
 
     // ---- Widget drag-and-drop plasman (24.7.2026, preprojektovano istog
-    // dana na Ognjenov eksplicitan zahtjev) ----
+    // dana na autorov eksplicitan zahtjev) ----
     // Prevlačenje pločice iz Widgeti kataloga na board: panel se zatvara,
     // pojavljuje se tačkasti grid + duh (ghost) pločice u STANDARDNOJ
     // (default) veličini widgeta. NAMJERNO nema slobodnog pozicioniranja
     // piksel-po-piksel (prvobitni pokušaj, colStart/rowStart preko
-    // addCard-a) - Ognjen je eksplicitno tražio da korisnik NEMA moć da
+    // addCard-a) - autor je eksplicitno tražio da korisnik NEMA moć da
     // stavi widget bilo gdje, nego da mjesto prevlačenja samo određuje
     // GDJE U REDOSLIJEDU sekcija se widget umeće (isto ponašanje kao
     // premještanje/reorder postojećih sekcija preko SortableJS-a), a
@@ -3401,6 +3406,11 @@
 
     function renderAppsGrid() {
       if (!appsGrid) return;
+      appsGrid.classList.toggle('is-platform-mode', appsMode === 'platform');
+      if (appsMode === 'platform') {
+        renderPlatformGrid();
+        return;
+      }
       const query = (appsSearch ? appsSearch.value : '').trim().toLocaleLowerCase('sr');
       // Prikaz filtrira i po FORMI: "Aplikacije" lista samo alate sa app
       // formom, "Widgeti" samo one sa widget formom (23.7.2026 - forme
@@ -3466,7 +3476,7 @@
         return;
       }
 
-      // Widgeti prikaz (23.7.2026, Ognjenov zahtjev): pored ikonice+imena,
+      // Widgeti prikaz (23.7.2026, autorov zahtjev): pored ikonice+imena,
       // ŽIVO renderovan pregled kako widget stvarno izgleda - isti
       // AIZdravo.renderInto put koji puni pravu karticu na boardu, samo
       // u malom neinteraktivnom okviru (inert + pointer-events:none, pa
@@ -3589,6 +3599,7 @@
     if (appsSearch) appsSearch.addEventListener('input', renderAppsGrid);
     if (appsModeApps) appsModeApps.addEventListener('click', () => setAppsMode('apps'));
     if (appsModeWidgets) appsModeWidgets.addEventListener('click', () => setAppsMode('widgets'));
+    if (appsModePlatform) appsModePlatform.addEventListener('click', () => setAppsMode('platform'));
 
     // Delegirano na #canvasWrap (dijeljeni predak SVIH boardova, tekućih i
     // budućih) umjesto na pojedinačan board element - board se pravi/gasi
@@ -3660,7 +3671,7 @@
       showToast('Alat „' + app.name + '“ je uklonjen.');
     }
 
-    // Trajno brisanje iz kataloga (27.7.2026, Ognjenov zahtjev - "opcija
+    // Trajno brisanje iz kataloga (27.7.2026, autorov zahtjev - "opcija
     // brisanja aplikacije i widgeta iz kataloga alata, uz poruku da je
     // brisanje permanentno"). Suprotno od removeAppEverywhere iznad (koja
     // samo SAKRIJE alat, fajlovi i podaci ostaju za reinstalaciju) - ovo
@@ -3837,44 +3848,313 @@
           return;
         }
 
-        // Živa registracija bez reload-a: ako je zamjena, prvo skini
-        // staru registraciju (registerApp odbija duplikat id-a) i ukloni
-        // stari <script> element da ne ostane mrtva referenca.
-        if (overwrite && window.AIZdravo && AIZdravo.unregisterApp) {
-          AIZdravo.unregisterApp(manifest.id);
-          document.querySelectorAll('script[src^="apps/' + manifest.id + '/app.js"]').forEach(el => el.remove());
-        }
-        await new Promise((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = 'apps/' + manifest.id + '/app.js?v=' + finishData.script_version;
-          script.onload = resolve;
-          script.onerror = () => reject(new Error('script_load_failed'));
-          document.body.appendChild(script);
-        });
-
-        renderAppsGrid();
-        renderInstalledApps();
-        // Zivo skidanje/ucitavanje skripte iznad mijenja SAMO registar i
-        // katalog - vec postavljena widget kartica na tabu je izgradjena
-        // od STARE skripte prije ovog trenutka i ostaje takva (stari DOM,
-        // stari event listeneri) dok se stranica stvarno ne osvjezi.
-        // Umjesto da se rizikuje tih re-mount (nesigurno da li svaki alat
-        // to podnosi cisto), samo oznaci karticu - Ognjenov zahtjev
-        // 31.7.2026 nakon sto je vidio "cudan izgled" prije refresha.
-        if (overwrite) {
-          document.querySelectorAll('.pcard[data-app-id="' + manifest.id + '"]').forEach(card => {
-            const inner = card.querySelector('.pcard-inner');
-            if (!inner || inner.querySelector('.pcard-stale-banner')) return;
-            const banner = document.createElement('div');
-            banner.className = 'pcard-stale-banner aiz-tooltip-host';
-            banner.dataset.aizTooltip = 'Alat je upravo nadograđen - osvježi stranicu (Cmd+R / F5) da ova kartica prikaže novu verziju.';
-            banner.innerHTML = '<span>Osvježi stranicu za nove promjene</span><span class="pcard-stale-info" aria-hidden="true">ⓘ</span>';
-            inner.insertBefore(banner, inner.firstChild);
-          });
-        }
-        showToast('„' + manifest.name + '“ je instaliran.');
+        const mode = await activateInstalledApp(manifest.id, finishData.script_version, overwrite, manifest.version);
+        installedToast(manifest.name, '', mode, 'instaliran');
       } catch (err) {
         showToast('Instalacija nije uspjela: server nije dostupan.');
+      }
+    }
+
+    // Alati čija je nova verzija na disku, ali stranica još vrti staru
+    // (vidi activateInstalledApp) - id -> nova verzija.
+    const appsPendingReload = new Map();
+
+    // Aktivacija tek instaliranog alata (dijele je "Učitaj alat" i AI
+    // Zdravo katalog). Vraća 'live' ili 'reload'.
+    //
+    // Nov alat se učita živo, bez osvježavanja. Ali ako je skripta tog
+    // alata VEĆ izvršena na ovoj stranici (zamjena verzije, ili ponovna
+    // instalacija poslije "Obriši trajno" - brisanje ne skida <script>),
+    // ponovno učitavanje pukne: top-level const/let alata su već
+    // deklarisani u globalnom opsegu ("Identifier 'X' has already been
+    // declared", uhvaćeno 13.10.2026 na Vremenskoj prognozi), a stara
+    // registracija bi već bila skinuta, pa bi alat nestao do osvježavanja.
+    // Zato tada stara verzija radi dalje, a nova se učita osvježavanjem.
+    async function activateInstalledApp(appId, scriptVersion, overwrite, newVersion) {
+      const alreadyLoaded = !!document.querySelector('script[src^="apps/' + appId + '/app.js"]') ||
+        !!(window.AIZdravo && AIZdravo.getApp(appId));
+      if (alreadyLoaded) {
+        appsPendingReload.set(appId, newVersion || '');
+        markStaleAppCards(appId);
+        renderAppsGrid();
+        renderInstalledApps();
+        return 'reload';
+      }
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'apps/' + appId + '/app.js?v=' + scriptVersion;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('script_load_failed'));
+        document.body.appendChild(script);
+      });
+
+      renderAppsGrid();
+      renderInstalledApps();
+      if (overwrite) markStaleAppCards(appId);
+      return 'live';
+    }
+
+    // Već postavljena widget kartica na tabu je izgrađena od STARE
+    // skripte i ostaje takva (stari DOM, stari event listeneri) dok se
+    // stranica stvarno ne osvježi. Umjesto da se rizikuje re-mount
+    // (nesigurno da li svaki alat to podnosi čisto), samo označi karticu -
+    // autorov zahtjev 31.7.2026 nakon što je vidio "čudan izgled" prije
+    // refresha.
+    function markStaleAppCards(appId) {
+      document.querySelectorAll('.pcard[data-app-id="' + appId + '"]').forEach(card => {
+        const inner = card.querySelector('.pcard-inner');
+        if (!inner || inner.querySelector('.pcard-stale-banner')) return;
+        const banner = document.createElement('div');
+        banner.className = 'pcard-stale-banner aiz-tooltip-host';
+        banner.dataset.aizTooltip = 'Alat je upravo nadograđen - osvježi stranicu (Cmd+R / F5) da ova kartica prikaže novu verziju.';
+        banner.innerHTML = '<span>Osvježi stranicu za nove promjene</span><span class="pcard-stale-info" aria-hidden="true">ⓘ</span>';
+        inner.insertBefore(banner, inner.firstChild);
+      });
+    }
+
+    function installedToast(name, version, mode, verb) {
+      if (mode === 'reload') {
+        showToast('„' + name + '“' + (version ? ' v' + version : '') + ' je ' + verb + '. Osvježi stranicu da se učita nova verzija.', 'Osvježi', () => location.reload());
+      } else {
+        showToast('„' + name + '“' + (version ? ' v' + version : '') + ' je ' + verb + '.');
+      }
+    }
+
+    // ---- AI Zdravo katalog (v1.7.0, 13.10.2026) ----
+    // Alati sa aizdravo.com (AI Sistem) koji se instaliraju jednim klikom.
+    // Dashboard NE priča sa platformom: AI asistent preko AI Zdravo MCP-a
+    // napuni .katalog/katalog.json (skill `katalog` + tools/katalog.py),
+    // a ovaj prikaz ga samo čita preko /api/katalog. Šta je alat za
+    // dashboard odlučuje sadržaj zipa (app.js sa registerApp), ne opis
+    // na platformi - vidi inspect_zip() u tools/katalog.py.
+    const KATALOG_PROMPT = 'Osvježi AI Zdravo katalog alata';
+    let platformKatalog = null; // null = još nije učitan
+    let platformKatalogError = false;
+    const platformInstalling = new Set();
+
+    async function loadPlatformKatalog() {
+      try {
+        const resp = await fetch('/api/katalog', { cache: 'no-store' });
+        const data = await resp.json();
+        if (!resp.ok || !data || !data.ok) throw new Error('katalog');
+        platformKatalog = data;
+        platformKatalogError = false;
+      } catch (err) {
+        platformKatalogError = true;
+      }
+      if (appsMode === 'platform') renderAppsGrid();
+    }
+
+    async function copyKatalogPrompt() {
+      try {
+        await navigator.clipboard.writeText(KATALOG_PROMPT);
+        showToast('Kopirano: „' + KATALOG_PROMPT + '“. Zalijepi Claude-u ili Codex-u u ovom folderu.');
+      } catch (err) {
+        showToast('Reci Claude-u ili Codex-u: „' + KATALOG_PROMPT + '“.');
+      }
+    }
+
+    function compareVersions(a, b) {
+      const pa = String(a || '').split(/[^0-9]+/).filter(Boolean).map(Number);
+      const pb = String(b || '').split(/[^0-9]+/).filter(Boolean).map(Number);
+      for (let i = 0; i < Math.max(pa.length, pb.length, 3); i++) {
+        const diff = (pa[i] || 0) - (pb[i] || 0);
+        if (diff) return diff > 0 ? 1 : -1;
+      }
+      return 0;
+    }
+
+    function formatKatalogDate(iso) {
+      const d = iso ? new Date(iso) : null;
+      if (!d || isNaN(d)) return '';
+      return d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear() + '.';
+    }
+
+    function katalogIconName(icon) {
+      // Ikonica alata često živi u SAMOM alatu (ubaci svoj simbol kad se
+      // učita), pa za još neinstaliran alat padamo na opštu ikonicu.
+      const name = safeIconName(icon);
+      return document.getElementById('icon-tabler-' + name) ? name : 'tool';
+    }
+
+    function renderPlatformGrid() {
+      clearPreviewCleanups();
+      appsGrid.replaceChildren();
+      if (appsEmpty) appsEmpty.hidden = true;
+      const query = (appsSearch ? appsSearch.value : '').trim().toLocaleLowerCase('sr');
+
+      const head = document.createElement('div');
+      head.className = 'katalog-head';
+      const headText = document.createElement('span');
+      const refreshBtn = document.createElement('button');
+      refreshBtn.type = 'button';
+      refreshBtn.className = 'katalog-refresh';
+      refreshBtn.innerHTML = '<svg><use href="#icon-tabler-rocket"></use></svg><span>Osvježi preko AI-a</span>';
+      refreshBtn.title = 'Kopira poruku za Claude/Codex - on preko AI Zdravo MCP-a povuče nove alate sa platforme.';
+      refreshBtn.addEventListener('click', copyKatalogPrompt);
+      head.append(headText, refreshBtn);
+      appsGrid.appendChild(head);
+
+      if (platformKatalogError) {
+        headText.textContent = 'Katalog nije dostupan - provjeri da li dashboard server radi.';
+        return;
+      }
+      if (!platformKatalog) {
+        headText.textContent = 'Učitavam katalog...';
+        return;
+      }
+      if (platformKatalog.needs_update) {
+        headText.textContent = 'Ažuriranje dashboarda nije završeno.';
+        const pending = document.createElement('div');
+        pending.className = 'katalog-empty';
+        pending.innerHTML =
+          '<strong>Još jedan korak do kataloga</strong>' +
+          '<span>Dashboard je ažuriran, ali fajlovi kataloga još nisu stigli (stara verzija ažuriranja ih nije znala). Reci Claude-u ili Codex-u u ovom folderu još jednom:</span>' +
+          '<code>Ažuriraj dashboard</code>';
+        appsGrid.appendChild(pending);
+        return;
+      }
+      if (!platformKatalog.exists) {
+        headText.textContent = 'Katalog još nije učitan.';
+        const empty = document.createElement('div');
+        empty.className = 'katalog-empty';
+        empty.innerHTML =
+          '<strong>Alati sa AI Zdravo platforme, instalacija jednim klikom</strong>' +
+          '<span>Katalog puni tvoj AI asistent preko AI Zdravo MCP-a (dashboard sam ne priča sa platformom). ' +
+          'Ako MCP još nije povezan, pogledaj vodič „AI Zdravo MCP je LIVE!“ na platformi. Zatim reci Claude-u ili Codex-u u ovom folderu:</span>' +
+          '<code></code>';
+        empty.querySelector('code').textContent = KATALOG_PROMPT;
+        const copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.className = 'modal-btn modal-btn-primary';
+        copyBtn.textContent = 'Kopiraj poruku';
+        copyBtn.addEventListener('click', copyKatalogPrompt);
+        empty.appendChild(copyBtn);
+        appsGrid.appendChild(empty);
+        return;
+      }
+
+      const tools = platformKatalog.tools || [];
+      headText.textContent = tools.length + (tools.length === 1 ? ' alat' : ' alata') +
+        ' sa platforme · osvježeno ' + formatKatalogDate(platformKatalog.synced_at);
+      const matches = tools.filter(tool => !query ||
+        tool.name.toLocaleLowerCase('sr').includes(query) ||
+        (tool.description || '').toLocaleLowerCase('sr').includes(query));
+      if (!matches.length) {
+        const none = document.createElement('p');
+        none.className = 'apps-no-results';
+        none.textContent = tools.length ? 'Nijedan alat ne odgovara pretrazi „' + query + '“.' : 'Na platformi još nema alata za dashboard.';
+        appsGrid.appendChild(none);
+      }
+
+      matches.forEach(tool => {
+        const installed = window.AIZdravo ? AIZdravo.getApp(tool.id) : null;
+        const cmp = installed ? compareVersions(tool.version, installed.version) : null;
+
+        const card = document.createElement('article');
+        card.className = 'katalog-card';
+        card.innerHTML =
+          '<div class="katalog-card-top">' +
+            '<span class="app-icon-tile app-icon-tile--sm"><svg><use href="#icon-tabler-' + katalogIconName(tool.icon) + '"></use></svg></span>' +
+            '<div class="katalog-card-title"><strong></strong><span class="katalog-version"></span></div>' +
+          '</div>' +
+          '<div class="katalog-badges"></div>' +
+          '<p class="katalog-desc"></p>' +
+          '<div class="katalog-card-foot"><a class="katalog-link" target="_blank" rel="noopener noreferrer"></a></div>';
+        card.querySelector('strong').textContent = tool.name;
+        card.querySelector('.katalog-version').textContent = 'v' + tool.version;
+        card.querySelector('.katalog-desc').textContent = tool.description || tool.resource_title || '';
+
+        const badges = card.querySelector('.katalog-badges');
+        const addBadge = (text, cls, tip) => {
+          const b = document.createElement('span');
+          b.className = 'katalog-badge' + (cls ? ' ' + cls : '');
+          b.textContent = text;
+          if (tip) b.title = tip;
+          badges.appendChild(b);
+        };
+        if (tool.widget) addBadge('Widget');
+        if (tool.app) addBadge('Aplikacija');
+        if (tool.server) addBadge('Lokalni server', 'is-server', 'Alat koristi lokalni server dashboarda: Python kod (server_ext.py) koji radi na tvom računaru, sa pristupom fajlovima, programima i internetu.');
+
+        const link = card.querySelector('.katalog-link');
+        if (tool.page_url) {
+          link.href = tool.page_url;
+          link.textContent = formatKatalogDate(tool.published_at) || 'Na platformi';
+          link.title = 'Otvori „' + (tool.resource_title || tool.name) + '“ na aizdravo.com';
+        } else {
+          link.remove();
+        }
+
+        const action = document.createElement('button');
+        action.type = 'button';
+        action.className = 'modal-btn katalog-action';
+        if (platformInstalling.has(tool.id)) {
+          action.textContent = 'Instaliram...';
+          action.disabled = true;
+        } else if (appsPendingReload.has(tool.id)) {
+          // Nova verzija je na disku, stranica još vrti staru.
+          action.textContent = 'Osvježi stranicu';
+          action.title = 'Instalirano - nova verzija se učitava osvježavanjem stranice.';
+          card.classList.add('is-installed');
+        } else if (!installed) {
+          action.textContent = 'Instaliraj';
+          action.classList.add('modal-btn-primary');
+        } else if (cmp > 0) {
+          action.textContent = 'Ažuriraj na v' + tool.version;
+          action.classList.add('modal-btn-primary');
+        } else {
+          action.textContent = cmp === 0 ? 'Instalirano' : 'Instalirano (v' + installed.version + ')';
+          action.disabled = true;
+          card.classList.add('is-installed');
+        }
+        action.addEventListener('click', () => {
+          if (appsPendingReload.has(tool.id)) location.reload();
+          else installFromKatalog(tool, installed, action);
+        });
+        card.querySelector('.katalog-card-foot').appendChild(action);
+        appsGrid.appendChild(card);
+      });
+
+      const locked = platformKatalog.locked || [];
+      if (locked.length) {
+        const note = document.createElement('p');
+        note.className = 'katalog-note';
+        note.textContent = locked.length + (locked.length === 1 ? ' resurs' : ' resursa') +
+          ' sa platforme nije u tvom paketu, pa nije provjereno da li je alat za dashboard.';
+        appsGrid.appendChild(note);
+      }
+    }
+
+    async function installFromKatalog(tool, installed, trigger) {
+      let message = installed
+        ? 'Ažurirati „' + tool.name + '“ sa v' + installed.version + ' na v' + tool.version + '? Trenutna verzija ide u arhivu (_apps_archive).'
+        : 'Instalirati „' + tool.name + '“ v' + tool.version + ' sa AI Zdravo platforme?';
+      if (tool.server) message += ' Alat koristi lokalni server: Python kod koji radi na tvom računaru.';
+      const ok = await askConfirmation(message, trigger, false);
+      if (!ok) return;
+
+      platformInstalling.add(tool.id);
+      renderAppsGrid();
+      try {
+        const resp = await fetch('/api/katalog/install', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resource_id: tool.resource_id, tool_id: tool.id }),
+        });
+        const data = await resp.json().catch(() => null);
+        if (!resp.ok || !data || !data.ok) {
+          showToast('Instalacija nije uspjela: ' + ((data && data.message) || ('HTTP ' + resp.status)));
+          return;
+        }
+        platformInstalling.delete(tool.id);
+        const mode = await activateInstalledApp(data.id, data.script_version, data.replaced, data.version);
+        installedToast(data.name, data.version, mode, data.replaced ? 'ažuriran' : 'instaliran');
+      } catch (err) {
+        showToast('Instalacija nije uspjela: server nije dostupan.');
+      } finally {
+        platformInstalling.delete(tool.id);
+        renderAppsGrid();
       }
     }
 
@@ -4341,7 +4621,7 @@
           const gy = r * BGRID + dotPhaseY - scrollTop;
           // 21.7.2026 - corner dot now uses the SAME radius/hoverPeak as
           // the sub-dots below (was 1.5/.4, marking it as visually
-          // "primary") - Ognjen wanted every dot in the mesh to read as
+          // "primary") - the author wanted every dot in the mesh to read as
           // one uniform texture, no big/small distinction, now that the
           // sub-grid makes every 14px point a real dot anyway.
           drawDot(gx, gy, 0.8, 0.3);

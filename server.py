@@ -36,9 +36,8 @@ ERROR_LOG = BASE_DIR / 'errors.jsonl'
 # "Ukloni trajno" (31.7.2026) - premjesti umjesto obrisi. Prije je
 # handle_delete_app radio shutil.rmtree(); sad se apps/<id>/ folder
 # premjesta ovamo, van apps/ (da ga nikakav apps/ scan/instalacija
-# ikad ne pokupi), sa timestamp sufiksom kod imenskog sudara. Vidi
-# feedback_never_clobber_user_data (Ignis) - isti princip primijenjen
-# ovdje: dugme i dalje kaže "trajno", ali stvarno se ne brise sa diska.
+# ikad ne pokupi), sa timestamp sufiksom kod imenskog sudara. Isti princip
+# kao svuda u dashboardu (nikad tiho ne brisati korisnikove podatke): dugme i dalje kaže "trajno", ali stvarno se ne brise sa diska.
 APPS_ARCHIVE_DIR = BASE_DIR / '_apps_archive'
 STATE_FILE = BASE_DIR / 'dashboard-state.json'
 STATE_TMP_FILE = BASE_DIR / 'dashboard-state.json.tmp'
@@ -315,6 +314,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             # da je riječ o istoj instanci.
             self.send_json(200, {'base_dir': str(BASE_DIR.resolve())})
             return
+        if path == '/api/katalog':
+            self.handle_katalog_get()
+            return
+        if unquote(path).lower().lstrip('/').startswith('.katalog'):
+            # Keš zipova i radni folderi kataloga nisu za browser.
+            self.send_json(404, {'error': 'not_found'})
+            return
         if _dispatch_plugin_route(self, 'GET', path):
             return
         if path != '/api/state':
@@ -423,6 +429,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
         if path == '/api/apps/install/finish':
             self.handle_install_finish()
+            return
+        if path == '/api/katalog/install':
+            self.handle_katalog_install()
             return
         if _dispatch_plugin_route(self, 'POST', path):
             return
@@ -645,26 +654,124 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_json(400, {'ok': False, 'error': 'app_js_missing', 'message': 'app.js nije pronađen - upload nije završen.'})
             return
 
-        script_version = int(time.time())
         try:
-            index_path = BASE_DIR / 'index.html'
-            content = index_path.read_text(encoding='utf-8')
-            pattern = re.compile(
-                r'[ \t]*<script src="apps/' + re.escape(app_id) + r'/app\.js(\?v=\d+)?"></script>\r?\n?'
-            )
-            content = pattern.sub('', content)
-            marker = '<!-- =================== KRAJ APLIKACIJA ========================== -->'
-            new_line = f'<script src="apps/{app_id}/app.js?v={script_version}"></script>\n'
-            if marker not in content:
-                self.send_json(500, {'ok': False, 'error': 'marker_missing', 'message': 'index.html nema APLIKACIJE blok marker.'})
-                return
-            content = content.replace(marker, new_line + marker, 1)
-            index_path.write_text(content, encoding='utf-8')
-        except OSError as exc:
-            self.send_json(500, {'ok': False, 'error': 'index_write_failed', 'message': str(exc)})
+            script_version = _register_app_script(app_id)
+        except _ScriptLineError as exc:
+            self.send_json(500, {'ok': False, 'error': exc.code, 'message': str(exc)})
             return
 
         self.send_json(200, {'ok': True, 'script_version': script_version})
+
+    def handle_katalog_get(self):
+        """AI Zdravo katalog (v1.7.0) - samo čita .katalog/katalog.json koji
+        AI asistent napuni preko MCP-a (skill `katalog`). Dashboard sam ne
+        priča sa platformom."""
+        if not (BASE_DIR / 'tools' / 'katalog.py').is_file():
+            # Update sa 1.6.x radi STARI dashboard_updater.py, koji ne zna
+            # za nove fajlove; drugi prolaz (već novom skriptom) ih donese.
+            self.send_json(200, {'ok': True, 'exists': False, 'needs_update': True, 'tools': []})
+            return
+        try:
+            katalog = _load_katalog_module()
+            data = katalog.load_katalog(BASE_DIR)
+        except Exception as exc:
+            self.send_json(500, {'ok': False, 'error': 'katalog_unavailable', 'message': str(exc)})
+            return
+        if not data:
+            self.send_json(200, {'ok': True, 'exists': False, 'tools': []})
+            return
+        self.send_json(200, {
+            'ok': True,
+            'exists': True,
+            'synced_at': data.get('synced_at'),
+            'tools': data.get('tools', []),
+            'locked': [
+                {k: r.get(k) for k in ('resource_id', 'title', 'page_url', 'published_at')}
+                for r in data.get('resources', []) if r.get('status') == 'zakljucano'
+            ],
+        })
+
+    def handle_katalog_install(self):
+        """Instalacija jednim klikom iz AI Zdravo kataloga: tools/katalog.py
+        raspakuje alat iz zipa čiji je SHA-256 zapisan pri osvježavanju
+        (stara verzija ide u _apps_archive/), pa ista script-linija logika
+        kao "Učitaj alat"."""
+        try:
+            payload = self.read_json_body(max_bytes=4096)
+        except Exception:
+            self.send_json(400, {'ok': False, 'error': 'bad_request'})
+            return
+        resource_id = payload.get('resource_id') if isinstance(payload, dict) else None
+        tool_id = payload.get('tool_id') if isinstance(payload, dict) else None
+        if not isinstance(tool_id, str) or not APP_ID_RE.match(tool_id):
+            self.send_json(400, {'ok': False, 'error': 'invalid_id', 'message': 'Nevažeći id alata.'})
+            return
+        try:
+            katalog = _load_katalog_module()
+            with _KATALOG_INSTALL_LOCK:
+                manifest, archived = katalog.install(resource_id, tool_id, BASE_DIR)
+                script_version = _register_app_script(tool_id)
+        except _ScriptLineError as exc:
+            self.send_json(500, {'ok': False, 'error': exc.code, 'message': str(exc)})
+            return
+        except Exception as exc:
+            self.send_json(400, {'ok': False, 'error': 'install_failed', 'message': str(exc)})
+            return
+        with _PLUGIN_CACHE_LOCK:
+            _PLUGIN_CACHE.pop(tool_id, None)
+        self.send_json(200, {
+            'ok': True,
+            'id': manifest['id'],
+            'name': manifest['name'],
+            'version': manifest['version'],
+            'script_version': script_version,
+            'replaced': archived is not None,
+        })
+
+
+class _ScriptLineError(Exception):
+    def __init__(self, code, message):
+        super().__init__(message)
+        self.code = code
+
+
+def _register_app_script(app_id):
+    """Upiši (ili zamijeni) <script> liniju alata unutar APLIKACIJE bloka
+    index.html-a. Nikad ne prepisuje ostatak fajla. Dijele je "Učitaj
+    alat" (install/finish) i AI Zdravo katalog."""
+    script_version = int(time.time())
+    try:
+        index_path = BASE_DIR / 'index.html'
+        content = index_path.read_text(encoding='utf-8')
+        pattern = re.compile(
+            r'[ \t]*<script src="apps/' + re.escape(app_id) + r'/app\.js(\?v=\d+)?"></script>\r?\n?'
+        )
+        content = pattern.sub('', content)
+        marker = '<!-- =================== KRAJ APLIKACIJA ========================== -->'
+        new_line = f'<script src="apps/{app_id}/app.js?v={script_version}"></script>\n'
+        if marker not in content:
+            raise _ScriptLineError('marker_missing', 'index.html nema APLIKACIJE blok marker.')
+        content = content.replace(marker, new_line + marker, 1)
+        index_path.write_text(content, encoding='utf-8')
+    except OSError as exc:
+        raise _ScriptLineError('index_write_failed', str(exc)) from exc
+    return script_version
+
+
+_KATALOG_MODULE = None
+_KATALOG_INSTALL_LOCK = threading.Lock()
+
+
+def _load_katalog_module():
+    """tools/katalog.py se učitava po putanji (kao server_ext.py alata),
+    jednom po procesu."""
+    global _KATALOG_MODULE
+    if _KATALOG_MODULE is None:
+        spec = importlib.util.spec_from_file_location('aizdravo_katalog', BASE_DIR / 'tools' / 'katalog.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _KATALOG_MODULE = module
+    return _KATALOG_MODULE
 
 
 def _cleanup_pidfile():

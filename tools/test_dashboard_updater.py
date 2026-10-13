@@ -59,6 +59,38 @@ class DashboardUpdaterTest(unittest.TestCase):
             encoding='utf-8',
         )
 
+    def test_new_core_file_from_manifest_is_applied(self):
+        """v1.7.0: fajl koji nova verzija navodi u MANIFEST-u, a ova skripta
+        ga nema u CORE_FILES, se ipak prenese; putanje van core-a nikad."""
+        import hashlib
+        current_dir = self.tmp / 'current'
+        staging_dir = self.tmp / 'staging'
+        _make_fixture_from_repo(current_dir)
+        _make_fixture_from_repo(staging_dir)
+        self._install_fake_app(current_dir)
+        new_rel = 'tools/novi_core_fajl.py'
+        (staging_dir / new_rel).write_text('# novo u ovoj verziji\n', encoding='utf-8')
+        evil = {'apps/test-app/app.js': 'podmetnuto', '../izvan.txt': 'x', 'dashboard-state.json': '{}'}
+        for rel, body in evil.items():
+            p = (staging_dir / rel)
+            if '..' not in rel:
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(body, encoding='utf-8')
+        manifest = {}
+        for rel in list(du.CORE_FILES) + [new_rel] + [r for r in evil if '..' not in r]:
+            f = staging_dir / rel
+            if f.exists() and rel != 'MANIFEST.json':
+                manifest[rel] = hashlib.sha256(f.read_bytes()).hexdigest()
+
+        report = du.apply_update(current_dir, staging_dir, manifest=manifest)
+
+        self.assertIn(new_rel, report['applied_files'])
+        self.assertTrue((current_dir / new_rel).exists())
+        self.assertNotIn('apps/test-app/app.js', report['applied_files'])
+        self.assertNotIn('dashboard-state.json', report['applied_files'])
+        self.assertIn('registerApp', (current_dir / 'apps' / 'test-app' / 'app.js').read_text(encoding='utf-8'))
+        self.assertFalse(du._is_safe_extra('../izvan.txt'))
+
     def test_installed_app_and_layout_survive_normal_update(self):
         current_dir = self.tmp / 'current'
         staging_dir = self.tmp / 'staging'

@@ -4,7 +4,7 @@
 // sa svojom ikonicom -> sadržaj vodiča desno. Kategorije: "Dashboard"
 // (vodič "Dobrodošli" - isti onboarding sadržaj kao welcome wizard koji
 // se prikaže prvi put uz dashboard, prvi u listi) i "Aplikacije i
-// widgeti" (vodič "Izgradnja" - četiri koraka koje Ognjen prolazi
+// widgeti" (vodič "Izgradnja" - četiri koraka koje autor prolazi
 // svaki put kad gradi novu aplikaciju/widget).
 //
 // Samo aplikacija (nema widget formu) - biblioteka se otvara kao

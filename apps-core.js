@@ -170,7 +170,7 @@
   // preview=true (katalog "Widgeti" prikaz, 2.8.2026): alat se renderuje
   // sa MOCK storage-om koji nikad ne čita pravi sačuvani sadržaj i nikad
   // ne piše - katalog treba da pokaže KAKO widget izgleda, ne stvaran
-  // sadržaj koji je Ognjen (ili neko drugi) ukucao na svom boardu (npr.
+  // sadržaj koji je autor (ili neko drugi) ukucao na svom boardu (npr.
   // tekst u QR alatu). Iz istog razloga toast/openApp/emit su no-op i
   // ovdje - preview nije živa instanca, samo vizuelni mockup.
   function makeCtx(appId, opts) {

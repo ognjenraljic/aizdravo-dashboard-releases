@@ -171,7 +171,7 @@ U ovom folderu je AI Zdravo Dashboard. Instaliraj alat "<APP-ID>":
    (dugme dole desno -> Alati).
 ```
 
-Za alat koji se distribuira kao čist kod (bez linka), Ognjen u objavu stavi kod + isti prompt sa opcijom iz zagrade.
+Za alat koji se distribuira kao čist kod (bez linka), autor u objavu stavi kod + isti prompt sa opcijom iz zagrade.
 
 ## Prompt za AŽURIRANJE postojećeg alata
 

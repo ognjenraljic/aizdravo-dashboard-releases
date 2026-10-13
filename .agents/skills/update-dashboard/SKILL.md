@@ -41,6 +41,8 @@ Skript sam radi sve ovo, u ovom redoslijedu:
 
 Rezultat je JSON izvještaj (`backup_dir`, `applied_files`, `server_customization_detected`, `server_update_skipped`) - pročitaj ga da znaš šta se tačno desilo.
 
+**Ako je `tools/dashboard_updater.py` u `applied_files`, pokreni ISTU komandu još jednom.** Ažuriranje je radila stara verzija skripte, koja ne zna za fajlove nove verzije (npr. `tools/katalog.py` i skill `katalog` u 1.7.0); drugi prolaz radi nova skripta i donese ih. Drugi prolaz je bezbjedan (novi backup, isti fajlovi). Od 1.7.0 skripta sama uzima i fajlove iz MANIFEST-a nove verzije, pa ovo ubuduće neće trebati.
+
 **NIKAD ne dira** (skript ovo već garantuje, ali vrijedi znati zašto): `dashboard-state.json` (raspored/teme/tabovi), `apps/` (instalirani alati), `.aizdravo-welcomed`, `dashboard.pid`, `dashboard-autostart.log`, `errors.jsonl`.
 
 Ako je izvještaj javio `server_customization_detected` (neprazna lista) i `server_update_skipped: true`:
