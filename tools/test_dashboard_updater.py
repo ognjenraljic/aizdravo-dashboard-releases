@@ -91,6 +91,33 @@ class DashboardUpdaterTest(unittest.TestCase):
         self.assertIn('registerApp', (current_dir / 'apps' / 'test-app' / 'app.js').read_text(encoding='utf-8'))
         self.assertFalse(du._is_safe_extra('../izvan.txt'))
 
+    def test_failed_copy_rolls_back_from_backup(self):
+        """1.7.1: greška usred kopiranja vraća već dirnute fajlove iz backupa
+        umjesto da ostavi mješavinu stare i nove verzije."""
+        current_dir = self.tmp / 'current'
+        staging_dir = self.tmp / 'staging'
+        _make_fixture_from_repo(current_dir)
+        _make_fixture_from_repo(staging_dir)
+        (current_dir / 'VERSION').write_text('1.0.0\n', encoding='utf-8')
+        (staging_dir / 'VERSION').write_text('2.0.0\n', encoding='utf-8')
+        (staging_dir / 'app.js').write_text('// nova verzija\n', encoding='utf-8')
+        old_app = (current_dir / 'app.js').read_text(encoding='utf-8')
+        real_copy = du.shutil.copyfile
+
+        def failing_copy(src, dst, *a, **kw):
+            if Path(dst) == current_dir / 'README.md':
+                raise PermissionError('zaključan fajl (simulacija)')
+            return real_copy(src, dst, *a, **kw)
+
+        du.shutil.copyfile = failing_copy
+        try:
+            with self.assertRaises(du.UpdateError):
+                du.apply_update(current_dir, staging_dir)
+        finally:
+            du.shutil.copyfile = real_copy
+        self.assertEqual((current_dir / 'app.js').read_text(encoding='utf-8'), old_app)
+        self.assertEqual((current_dir / 'VERSION').read_text(encoding='utf-8').strip(), '1.0.0')
+
     def test_installed_app_and_layout_survive_normal_update(self):
         current_dir = self.tmp / 'current'
         staging_dir = self.tmp / 'staging'
@@ -200,7 +227,7 @@ class DashboardUpdaterTest(unittest.TestCase):
         old_argv = sys.argv
         try:
             os.chdir(current_dir)
-            sys.argv = ['dashboard_updater.py', '.', '--source-dir', str(staging_dir)]
+            sys.argv = ['dashboard_updater.py', '.', '--source-dir', str(staging_dir), '--no-manifest']
             du.main()
         finally:
             os.chdir(old_cwd)

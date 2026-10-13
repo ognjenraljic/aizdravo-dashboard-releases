@@ -28,6 +28,7 @@ Samo standardna biblioteka. CLI:
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import sys
@@ -205,8 +206,16 @@ def _manifest_from_source(source):
     block = source[pos:pos + 40000]
 
     def field(name, limit):
-        m = re.search(r'^([ \t]*)' + name + r"\s*:\s*(['\"])(.{0," + str(limit) + r"}?)\2", block, re.M)
-        return (m.group(3), m.group(1)) if m else (None, None)
+        # Polje na početku reda (uobičajen višeredni manifest) ili iza { / ,
+        # (manifest u jednom redu). Navodnik sa escape-om (\') je dio teksta.
+        pattern = (r'(^[ \t]*|[{,][ \t]*)' + name +
+                   r"\s*:\s*(['\"])((?:\\.|(?!\2)[^\\\n]){0," + str(limit) + r"})\2")
+        m = re.search(pattern, block, re.M)
+        if not m:
+            return None, None
+        value = re.sub(r'\\(.)', r'\1', m.group(3))
+        indent = m.group(1) if not m.group(1).lstrip().startswith(('{', ',')) else None
+        return value, indent
 
     app_id, indent = field('id', 80)
     if not app_id or not APP_ID_RE.match(app_id):
@@ -215,10 +224,16 @@ def _manifest_from_source(source):
     version, _ = field('version', 20)
     description, _ = field('description', 400)
     icon, _ = field('icon', 40)
-    ind = re.escape(indent or '')
 
     def has_form(form):
-        return re.search(r'^' + ind + form + r'\s*(\(|:)', block, re.M) is not None
+        if indent is not None:
+            # Višeredni manifest: forma samo na nivou uvlačenja manifest polja
+            # (ne neka istoimena funkcija dublje u kodu).
+            return re.search(r'^' + re.escape(indent) + form + r'\s*(\(|:)', block, re.M) is not None
+        # Manifest u jednom redu: forma u istom redu kao id.
+        line_end = block.find('\n', block.find('registerApp('))
+        first_line = block[:line_end if line_end != -1 else len(block)]
+        return re.search(r'[{,]\s*' + form + r'\s*(\(|:)', first_line) is not None
 
     return {
         'id': app_id,
@@ -449,6 +464,35 @@ def sync(candidates, base_dir=BASE_DIR, full=False, check_unmarked=False, log=pr
 
 # ---------------- Instalacija ----------------
 
+def _is_user_secret(name):
+    """.env, .env.local... (ne .env.example) - korisnikov ključ/podešavanje."""
+    return name == '.env' or (name.startswith('.env.') and not name.endswith(('.example', '.sample', '.template')))
+
+
+def carry_over_user_files(old_dir, new_dir):
+    """Pri zamjeni verzije alata zadrži korisnikove podatke iz stare verzije:
+    fajlove kojih nema u novom paketu (dodati paketi ikonica, podaci) i
+    korisnikove .env fajlove (paket često nosi .env sa placeholderom koji
+    bi inače pregazio pravi API ključ). Sve ostalo dolazi iz nove verzije.
+    Vraća listu prenesenih relativnih putanja."""
+    old_dir, new_dir = Path(old_dir), Path(new_dir)
+    carried = []
+    if not old_dir.is_dir():
+        return carried
+    for src in sorted(old_dir.rglob('*')):
+        if src.is_symlink() or not src.is_file():
+            continue
+        rel = src.relative_to(old_dir)
+        if '__pycache__' in rel.parts or rel.name == '.DS_Store':
+            continue
+        dst = new_dir / rel
+        if dst.exists() and not _is_user_secret(rel.name):
+            continue
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+        carried.append(rel.as_posix())
+    return carried
+
 def find_tool(data, resource_id, tool_id):
     for res in (data or {}).get('resources', []):
         if res.get('resource_id') == resource_id and res.get('status') == 'dashboard':
@@ -506,11 +550,18 @@ def install(resource_id, tool_id, base_dir=BASE_DIR):
 
         archived = None
         if target.exists():
+            carry_over_user_files(target, staging)
             archive_root = base_dir / '_apps_archive'
             archive_root.mkdir(exist_ok=True)
             archived = archive_root / f'{tool_id}_{time.strftime("%Y%m%d%H%M%S")}'
-            shutil.move(str(target), str(archived))
-        shutil.move(str(staging), str(target))
+            # Jedan rename (isti disk): na Windowsu zaključan fajl tada
+            # obori cijelu zamjenu umjesto da ostavi polu-obrisan alat.
+            try:
+                os.rename(str(target), str(archived))
+            except OSError as exc:
+                raise KatalogError('ne mogu zamijeniti alat - neki fajl u njemu je možda otvoren '
+                                   f'(alat radi ili ga drži drugi program); zatvori ga pa probaj ponovo ({exc})') from exc
+        os.rename(str(staging), str(target))
         return manifest, archived
     finally:
         shutil.rmtree(staging_root, ignore_errors=True)
@@ -522,7 +573,7 @@ def _cli():
     parser = argparse.ArgumentParser(description='AI Zdravo katalog alata za dashboard')
     sub = parser.add_subparsers(dest='cmd', required=True)
     p_sync = sub.add_parser('sync', help='osvježi katalog iz kandidata koje je AI asistent dobio preko MCP-a')
-    p_sync.add_argument('--input', required=True, help='JSON lista resursa (MCP fetch rezultati)')
+    p_sync.add_argument('--input', required=True, help='JSON lista resursa (MCP fetch rezultati); "-" = standardni ulaz')
     p_sync.add_argument('--full', action='store_true', help='pun prolaz: resursi kojih nema u ulazu se brišu iz kataloga')
     p_sync.add_argument('--provjeri-sve', action='store_true',
                         help=f'pregledaj i zipove resursa bez oznake "{MARKER_TEXT}" u opisu')
@@ -530,7 +581,8 @@ def _cli():
     args = parser.parse_args()
 
     if args.cmd == 'sync':
-        raw = json.loads(Path(args.input).read_text(encoding='utf-8'))
+        text = sys.stdin.read() if args.input == '-' else Path(args.input).read_text(encoding='utf-8')
+        raw = json.loads(text)
         if isinstance(raw, dict):
             raw = raw.get('resources') or raw.get('results') or []
         summary = sync(raw, full=args.full, check_unmarked=args.provjeri_sve)
@@ -548,4 +600,10 @@ def _cli():
 
 
 if __name__ == '__main__':
+    # Windows pipe (AI asistent pokreće skriptu) je često cp1252 bez č/ć/đ.
+    for _stream in (sys.stdin, sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding='utf-8', errors='replace')
+        except (AttributeError, ValueError):
+            pass
     sys.exit(_cli())

@@ -24,7 +24,7 @@ Tri puta do novog alata u dashboardu:
 
 1. **Prompt**: opišete Claude-u/Codex-u šta želite, on napiše kod i sam ga registruje.
 2. **Gotov folder**: prevučete folder alata u `apps/`, kažete "učitaj ga", automatski se registruje.
-3. **AI Zdravo katalog**: alati sa platforme aizdravo.com, instalacija jednim klikom (Katalog -> AI Zdravo). Katalog puni vaš AI asistent preko AI Zdravo MCP-a: povežite MCP, pa recite Claude-u/Codex-u "Osvježi AI Zdravo katalog alata".
+3. **AI Zdravo katalog**: alati sa platforme aizdravo.com, instalacija jednim klikom (+ dugme dolje desno → Alati → tab AI Zdravo). Katalog puni vaš AI asistent preko AI Zdravo MCP-a: povežite MCP, pa recite Claude-u/Codex-u "Osvježi AI Zdravo katalog alata".
 
 Jedan te isti folder pokriva i "aplikaciju" i "widget" formu ako alat ima obje. Nema odvojenih foldera po formi. Pun tehnički kontrakt (za autore alata): `APPS_AND_WIDGETS.md`.
 

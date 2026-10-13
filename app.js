@@ -19,6 +19,31 @@
   const STATE_EXCLUDED_KEYS = new Set(['aizdravo:error-log']);
   let stateSyncTimer = null;
   const pendingStateChanges = new Map();
+  // Izmjene koje još nisu stigle do servera, trajno u browseru (1.7.1).
+  // Ranije su živjele samo u memoriji: kad server ne radi i tab se zatvori,
+  // sljedeće otvaranje bi ih pregazilo stanjem sa servera. Ključ namjerno
+  // NE počinje sa STATE_PREFIX - ne ide u server sync ni u backup.
+  const PENDING_SYNC_KEY = 'aizdravo-sync:pending';
+  let syncFailureNotified = false;
+
+  function rememberPendingChanges() {
+    try {
+      if (pendingStateChanges.size) {
+        localStorage.setItem(PENDING_SYNC_KEY, JSON.stringify(Object.fromEntries(pendingStateChanges)));
+      } else {
+        localStorage.removeItem(PENDING_SYNC_KEY);
+      }
+    } catch (err) { /* storage blokiran - ostaje samo memorija */ }
+  }
+
+  function readRememberedChanges() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(PENDING_SYNC_KEY) || 'null');
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (err) {
+      return null;
+    }
+  }
   const saveStatusEl = document.getElementById('saveStatus');
   const saveStatusText = document.getElementById('saveStatusText');
   const toastEl = document.getElementById('toast');
@@ -202,15 +227,25 @@
     pendingStateChanges.clear();
     setSaveStatus('saving');
     try {
+      const body = JSON.stringify({ version: 1, changes });
       const response = await fetch('/api/state', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ version: 1, changes }),
+        body,
         cache: 'no-store',
-        keepalive,
+        // keepalive odbija tijelo veće od 64KB - tada običan zahtjev.
+        keepalive: keepalive && body.length < 60000,
       });
-      if (response.ok) {
+      let ok = response.ok;
+      if (response.status === 409) {
+        // Server nema fajl stanja (obrisan, nov folder): PATCH bi napravio
+        // fajl sa samo par ključeva, pa se šalje KOMPLETNO lokalno stanje.
+        ok = await seedStateFile();
+      }
+      if (ok) {
         setSaveStatus('saved');
+        syncFailureNotified = false;
+        rememberPendingChanges();
         return true;
       }
     } catch (err) {
@@ -222,7 +257,12 @@
       // older value from the failed request.
       if (!pendingStateChanges.has(key)) pendingStateChanges.set(key, value);
     });
+    rememberPendingChanges();
     setSaveStatus('error', 'Sačuvano lokalno');
+    if (!syncFailureNotified && !keepalive) {
+      syncFailureNotified = true;
+      showToast('Server dashboarda ne odgovara - izmjene su sačuvane u ovom browseru i biće poslane čim se server vrati.');
+    }
     return false;
   }
 
@@ -244,6 +284,7 @@
     // Server persistence should still work when browser storage is
     // blocked or unavailable.
     pendingStateChanges.set(key, value);
+    rememberPendingChanges();
     setSaveStatus(localSaved ? 'saving' : 'error', localSaved ? 'Čuvanje...' : 'Čuvanje nije uspjelo');
     scheduleStateSync();
     return localSaved;
@@ -257,6 +298,7 @@
       localRemoved = false;
     }
     pendingStateChanges.set(key, null);
+    rememberPendingChanges();
     setSaveStatus(localRemoved ? 'saving' : 'error', localRemoved ? 'Čuvanje...' : 'Čuvanje nije uspjelo');
     scheduleStateSync();
     return localRemoved;
@@ -302,7 +344,17 @@
     }
   }
 
-  const stateHydration = await hydrateStateFromServer();
+  // Izmjene koje prošli put nisu stigle do servera idu PRVE (1.7.1), pa tek
+  // onda hydrate - inače bi ih stanje sa servera pregazilo.
+  const rememberedChanges = readRememberedChanges();
+  let rememberedFlushFailed = false;
+  if (rememberedChanges && Object.keys(rememberedChanges).length) {
+    Object.entries(rememberedChanges).forEach(([key, value]) => {
+      if (!pendingStateChanges.has(key)) pendingStateChanges.set(key, value);
+    });
+    rememberedFlushFailed = !(await flushStateChanges());
+  }
+  const stateHydration = rememberedFlushFailed ? 'unavailable' : await hydrateStateFromServer();
   if (stateHydration === 'missing') await seedStateFile();
   if (stateHydration === 'corrupt') {
     const healed = await seedStateFile();
@@ -314,7 +366,11 @@
 
   window.addEventListener('storage', (event) => {
     if (!event.key || !event.key.startsWith(STATE_PREFIX) || STATE_EXCLUDED_KEYS.has(event.key)) return;
-    showToast('Dashboard je promijenjen u drugom browser tabu.', 'Učitaj promjene', () => location.reload());
+    showToast('Dashboard je promijenjen u drugom browser tabu.', 'Učitaj promjene', () => {
+      // Ovaj tab ima STARI prikaz - ne smije ga upisati pri osvježavanju.
+      suppressUnloadLayoutSave = true;
+      location.reload();
+    });
   });
 
   // Jednokratna migracija (23.7.2026): Home tab je do sada bio klasičan
@@ -797,7 +853,7 @@
   window.addEventListener('pagehide', () => {
     if (!suppressUnloadLayoutSave) {
       boardAPIs.forEach(api => {
-        if (api && api.saveLayout) api.saveLayout();
+        if (api && api.saveLayoutIfChanged) api.saveLayoutIfChanged();
       });
     }
     flushStateChanges(true);
@@ -1227,7 +1283,29 @@
         });
       }
 
+      // Zadnji raspored koji je OVAJ browser tab učitao ili sačuvao (1.7.1).
+      // pagehide upisuje raspored samo ako se od tada nešto promijenilo
+      // baš u ovom tabu - inače bi stari, neaktivni tab pri zatvaranju (ili
+      // na "Učitaj promjene") vratio svoj stari raspored preko izmjena
+      // napravljenih u drugom tabu.
+      let lastLayoutJson = null;
+
       function saveLayout() {
+        const json = serializeLayout();
+        lastLayoutJson = json;
+        try {
+          persistValue(storageKey, json);
+        } catch (err) {
+          // private-browsing/quota-exceeded localStorage throws - losing
+          // persistence for this save isn't worth breaking the board over
+        }
+      }
+
+      function saveLayoutIfChanged() {
+        if (serializeLayout() !== lastLayoutJson) saveLayout();
+      }
+
+      function serializeLayout() {
         const layout = Array.from(boardEl.querySelectorAll('.pcard'))
           .map(card => {
             const spans = cardSpans.get(card);
@@ -1262,18 +1340,14 @@
             return entry;
           })
           .filter(Boolean);
-        try {
-          persistValue(storageKey, JSON.stringify(layout));
-        } catch (err) {
-          // private-browsing/quota-exceeded localStorage throws - losing
-          // persistence for this save isn't worth breaking the board over
-        }
+        return JSON.stringify(layout);
       }
 
       function loadLayout() {
         let saved;
         try {
           const raw = localStorage.getItem(storageKey);
+          lastLayoutJson = raw;
           if (raw === null) return;
           saved = JSON.parse(raw);
         } catch (err) {
@@ -1853,6 +1927,12 @@
       boardAPIs.set(boardEl, {
         addCard,
         saveLayout,
+        saveLayoutIfChanged,
+        destroy() {
+          // Brisanje taba (1.7.1): ugasi widgete (tajmere, listenere) svih
+          // kartica - prije su nastavljali da rade u pozadini.
+          boardEl.querySelectorAll('.pcard').forEach(card => runCardCleanup(card));
+        },
         refreshRightLimits,
         updateEmptyState,
         extractCard,
@@ -1865,6 +1945,10 @@
 
       boardEl.querySelectorAll('.pcard').forEach(makeEdgeResizable);
       updateEmptyState();
+      // Osnova za saveLayoutIfChanged: raspored onako kako ga OVAJ board
+      // serijalizuje (sirov tekst iz storage-a se razlikuje po poljima i
+      // redoslijedu, pa bi se svaki tab uvijek računao kao "promijenjen").
+      lastLayoutJson = serializeLayout();
       // Wait for the card entrance transform to finish before geometry is
       // used to identify which card reaches the final grid track.
       setTimeout(refreshRightLimits, 600);
@@ -2551,6 +2635,10 @@
       const removedBoard = section && section.querySelector('.board');
       const removedBoardAPI = removedBoard ? boardAPIs.get(removedBoard) : null;
       if (removedBoard) boardAPIs.delete(removedBoard);
+      // Widgeti obrisanog taba se gase (1.7.1). "Vrati" za obični tab
+      // pravi board iznova (createTabDOM), pa ne nastaju duple instance;
+      // Home DOM se vraća isti, ali Home nikad nema widgete.
+      if (removedBoardAPI && removedBoardAPI.destroy && id !== 'home') removedBoardAPI.destroy();
 
       const remainingTabs = tabsBefore.filter(t => t.id !== id);
       saveTabs(remainingTabs);
@@ -3049,8 +3137,9 @@
       tabBtn.innerHTML =
         '<svg><use href="#icon-tabler-' + safeIconName(app.icon) + '"></use></svg>' +
         '<span class="top-tab-label"></span>' +
-        '<span class="top-tab-close" title="Zatvori aplikaciju" aria-label="Zatvori aplikaciju &quot;' + app.name + '&quot;"><svg><use href="#icon-tabler-x"></use></svg></span>';
+        '<span class="top-tab-close" title="Zatvori aplikaciju"><svg><use href="#icon-tabler-x"></use></svg></span>';
       tabBtn.querySelector('.top-tab-label').textContent = app.name;
+      tabBtn.querySelector('.top-tab-close').setAttribute('aria-label', 'Zatvori aplikaciju „' + app.name + '“');
       tabBtn.addEventListener('click', event => {
         if (event.target.closest('.top-tab-close')) return; // ima svoj handler ispod
         switchTopTab(app.id);
@@ -3891,6 +3980,13 @@
       renderAppsGrid();
       renderInstalledApps();
       if (overwrite) markStaleAppCards(appId);
+      // Kartice ovog alata koje su čekale ("Alat nije dostupan") se sad
+      // prikažu odmah, bez osvježavanja stranice (1.7.1).
+      document.querySelectorAll('.pcard[data-app-id="' + appId + '"]').forEach(card => {
+        const board = card.closest('.board');
+        const api = board && boardAPIs.get(board);
+        if (api && api.renderCardContent && card.querySelector('.app-render-error')) api.renderCardContent(card);
+      });
       return 'live';
     }
 

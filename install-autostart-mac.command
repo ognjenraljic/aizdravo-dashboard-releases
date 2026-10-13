@@ -5,6 +5,11 @@
 # pokrenuti ovo više puta (prepisuje isti LaunchAgent).
 cd "$(dirname "$0")"
 BASE_DIR="$(pwd)"
+# 1.7.1 - "--yes" (za AI asistenta, bez tastature) odgovara "y" na pitanje
+# o premještanju; "Pritisni Enter" se preskače kad nema terminala.
+AUTO_YES=""
+[ "$1" = "--yes" ] && AUTO_YES="y"
+pause_if_interactive() { if [ -t 0 ]; then read -p "Pritisni Enter da zatvoriš ovaj prozor..."; fi; return 0; }
 
 # 24.7.2026 - macOS TCC ("Fajlovi i folderi" privatnost) blokira procese
 # pokrenute preko launchd (auto-start bez GUI konteksta) da čitaju fajlove
@@ -21,10 +26,10 @@ case "$BASE_DIR" in
     echo "macOS ne dozvoljava auto-pokretanju da čita fajlove unutar Desktop/Documents/Downloads."
     echo "Da bi auto-start radio, folder treba biti premješten van tih foldera (npr. ~/aizdravo)."
     echo ""
-    read -p "Premjestiti folder na ~/aizdravo sad? (y/n): " ANSWER
+    if [ -n "$AUTO_YES" ]; then ANSWER="y"; else read -p "Premjestiti folder na ~/aizdravo sad? (y/n): " ANSWER; fi
     if [ "$ANSWER" != "y" ] && [ "$ANSWER" != "Y" ]; then
       echo "U redu - auto-start otkazan. Premjesti folder ručno pa ponovo pokreni ovaj skript."
-      read -p "Pritisni Enter da zatvoriš ovaj prozor..."
+      pause_if_interactive
       exit 0
     fi
     TARGET="$HOME/aizdravo"
@@ -33,18 +38,23 @@ case "$BASE_DIR" in
       TARGET="$HOME/aizdravo-$SUFFIX"
       SUFFIX=$((SUFFIX + 1))
     done
+    # 1.7.1 - ugasi server OVOG foldera prije premještanja: inače ostaje
+    # da radi iz stare (nepostojeće) putanje, vraća 404 i drži port.
+    if command -v python3 >/dev/null 2>&1; then
+      python3 server.py --stop >/dev/null 2>&1 || true
+    fi
     # 27.7.2026 (Codex QA) - mv/cd rezultat se ranije nije provjeravao, pa
     # bi skripta poslije neuspjelog premještanja nastavila i na kraju
     # javila "Gotovo!" sa pogrešnim/nepostojećim BASE_DIR u plistu.
     if ! mv "$BASE_DIR" "$TARGET"; then
       echo "Premještanje foldera na $TARGET nije uspjelo. Auto-start nije podešen."
-      read -p "Pritisni Enter da zatvoriš ovaj prozor..."
+      pause_if_interactive
       exit 1
     fi
     BASE_DIR="$TARGET"
     if ! cd "$BASE_DIR"; then
       echo "Folder je premješten na $BASE_DIR ali ne mogu da uđem u njega. Auto-start nije podešen."
-      read -p "Pritisni Enter da zatvoriš ovaj prozor..."
+      pause_if_interactive
       exit 1
     fi
     echo "Premješteno na $BASE_DIR - koristi OVU lokaciju ubuduće (stara je nestala odatle)."
@@ -58,7 +68,7 @@ PLIST_PATH="$PLIST_DIR/com.aizdravo.dashboard.plist"
 
 if [ -z "$PYTHON3" ]; then
   echo "Python 3 nije pronađen. Instaliraj ga sa python.org pa probaj ponovo."
-  read -p "Pritisni Enter da zatvoriš ovaj prozor..."
+  pause_if_interactive
   exit 1
 fi
 
@@ -107,7 +117,10 @@ echo ""
 # "Gotovo!". launchctl print vraća 0 samo ako je servis stvarno registrovan.
 if launchctl print "gui/$(id -u)/com.aizdravo.dashboard" >/dev/null 2>&1; then
   echo "Gotovo! AI Zdravo Dashboard će se sad sam pokretati pri svakoj prijavi na ovaj Mac."
-  echo "Otvori http://localhost:8100 u browseru i sačuvaj ga u Bookmarks (Cmd+D) -"
+  DASH_URL="$("$PYTHON3" "$BASE_DIR/tools/dashboard_url.py" --wait 8 2>/dev/null)"
+  [ -n "$DASH_URL" ] || DASH_URL="http://localhost:8100"
+  echo "AI Zdravo Dashboard -> $DASH_URL"
+  echo "Otvori $DASH_URL u browseru i sačuvaj ga u Bookmarks (Cmd+D) -"
   echo "odsad samo klikni taj bookmark, dashboard je uvijek spreman."
 else
   echo "Auto-start NIJE potvrđen - launchctl nije uspio da učita LaunchAgent."
@@ -118,4 +131,4 @@ echo ""
 echo "Da ukloniš auto-pokretanje, dvaput klikni uninstall-autostart-mac.command"
 echo "(nalazi se u $BASE_DIR ako je folder premješten)."
 echo ""
-read -p "Pritisni Enter da zatvoriš ovaj prozor..."
+pause_if_interactive

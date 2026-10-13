@@ -5,21 +5,53 @@ REM Store alias koji "python" zna biti bez stvarne instalacije - 27.7.2026,
 REM Codex QA audit), pa "python", pa "python3".
 cd /d "%~dp0"
 
-REM 24.7.2026 - server se sad pokrece u ODVOJENOM (minimizovanom) prozoru
-REM preko "start", ne u ovom istom cmd sesiji - zatvaranje OVOG prozora
-REM vise ne gasi dashboard. Ako nesto ne uspije, otvori taj minimizovani
-REM prozor iz trake zadataka da vidis poruku o gresci.
-start "AI Zdravo Dashboard" /min cmd /c "py -3 server.py || python server.py || python3 server.py || (echo. & echo Python 3 nije pronadjen. Instaliraj ga sa python.org (obavezno cekiraj "Add python.exe to PATH" u instalaciji), pa probaj ponovo. & pause)"
+REM 1.7.1 - Python se bira PRIJE pokretanja (isti obrazac kao
+REM install-autostart-windows.bat). Ranije je server pokretan lancem
+REM "py -3 server.py || python server.py || ...": kad se server ugasi sa
+REM kodom razlicitim od 0, lanac je odmah dizao drugi server.
+set "PYEXE="
+set "PYARG="
+py -3 --version >nul 2>nul
+if not errorlevel 1 (
+    set "PYEXE=py"
+    set "PYARG=-3"
+)
+if not defined PYEXE (
+    where python >nul 2>nul
+    if not errorlevel 1 (
+        python --version >nul 2>nul
+        if not errorlevel 1 set "PYEXE=python"
+    )
+)
+if not defined PYEXE (
+    where python3 >nul 2>nul
+    if not errorlevel 1 set "PYEXE=python3"
+)
+if not defined PYEXE (
+    echo.
+    echo Python 3 nije pronadjen. Instaliraj ga sa python.org ^(obavezno cekiraj "Add python.exe to PATH" u instalaciji^), pa probaj ponovo.
+    echo.
+    pause
+    exit /b 1
+)
 
-timeout /t 2 >nul
+REM 24.7.2026 - server se pokrece u ODVOJENOM (minimizovanom) prozoru
+REM preko "start", ne u ovom istom cmd sesiji - zatvaranje OVOG prozora
+REM vise ne gasi dashboard. Ako server javi gresku, prozor ostaje otvoren
+REM (pause) da se vidi poruka.
+start "AI Zdravo Dashboard" /min cmd /c "%PYEXE% %PYARG% server.py || pause"
+
 echo.
-REM 27.7.2026 (Codex QA) - ovo NIJE potvrda da je server stvarno odgovorio,
-REM samo da je prozor pokrenut. Ako nesto ne valja (Python fali, port
-REM zauzet), poruka o gresci ceka u minimizovanom prozoru iz trake
-REM zadataka - otvori ga prije nego zakljucis da nesto ne radi.
-echo AI Zdravo Dashboard bi trebalo da se pokrece u odvojenom (minimizovanom) prozoru.
-echo Ako http://localhost:8100 ne radi za par sekundi, otvori taj minimizovani
-echo prozor iz trake zadataka da vidis eventualnu poruku o gresci.
+REM 1.7.1 - ispisi STVARNU adresu (port nije uvijek 8100: ako je zauzet,
+REM server prelazi na sljedeci). AI asistent cita liniju "AI Zdravo Dashboard -> ...".
+set "DASHURL="
+for /f "delims=" %%U in ('%PYEXE% %PYARG% tools\dashboard_url.py --wait 8 2^>nul') do set "DASHURL=%%U"
+if defined DASHURL (
+    echo AI Zdravo Dashboard -^> %DASHURL%
+) else (
+    echo Dashboard se nije javio. Otvori minimizovani prozor "AI Zdravo Dashboard"
+    echo iz trake zadataka da vidis poruku o gresci.
+)
 echo Mozes slobodno zatvoriti OVAJ prozor - dashboard ostaje ziv.
 echo Da ga zaustavis, dvaput klikni na stop-windows.bat.
 echo.

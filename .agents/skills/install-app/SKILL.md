@@ -29,7 +29,7 @@ Za "dodao sam alate u folder, učitaj ih" / "sinhronizuj alate" - nema pojedina�
 - Link dat u poruci (`ovog linka: <URL>`) - PRIJE fetch-a, kratko potvrdi: "Skidam kod sa <URL> i instaliram ga - alat će imati pun pristup dashboardu (isto kao i sam dashboard). Nastaviti?". Tek poslije potvrde fetch-uj i nastavi. Ovo je JEDINI korak u cijelom procesu koji traži potvrdu - ne usporava ostatak instalacije.
 - Kod zalijepljen u istoj poruci/kodnom bloku - koristi direktno.
 - Fajl je već sačuvan u `apps/<id>/app.js` (ručno prekopiran folder) - ništa se ne upisuje, samo pređi na Korak 2 (validacija) i Korak 4 (registracija) za taj `id`.
-- Neki alati (npr. onima kojima treba ffmpeg ili slična server-side obrada) nose i izmjenu za `server.py`, odvojeno od `apps/<id>/app.js` - prepoznaj po eksplicitnoj oznaci (drugi kodni blok, "server.py izmjena" napomena) i primijeni je ODVOJENO. Nikad ne trpaj server-side kod unutar `apps/<id>/app.js` - vidi APPS_AND_WIDGETS.md pravilo 2 (server je opcion, mora se jasno degradirati bez sebe, poruka ne rušenje).
+- Neki alati (npr. onima kojima treba ffmpeg ili slična server-side obrada) nose i server dio. On ide ISKLJUČIVO kao `apps/<id>/server_ext.py` (ROUTES + funkcije, vidi `APPS_AND_WIDGETS.md` i `.claude/skills/build-app/` Korak 4) - core ga sam lijeno učita, bez restarta. **Nikad ne mijenjaj core `server.py`:** ažuriranje dashboarda takvu izmjenu ili tiho pregazi ili ostavi `server.py` na staroj verziji. Ako paket nosi stari oblik ("izmjena za server.py"), prepiši taj kod u `server_ext.py` istog alata. Nikad ne trpaj server-side kod unutar `apps/<id>/app.js` - vidi APPS_AND_WIDGETS.md pravilo 2 (server je opcion, mora se jasno degradirati bez sebe, poruka ne rušenje).
 
 ## Korak 2 - Validiraj PRIJE upisa
 
@@ -48,7 +48,7 @@ Ako nešto ne prolazi, ispravi sam ako je očigledno (npr. icon koji ne postoji 
 
 1. Napravi `apps/<id>/` ako ne postoji.
 2. Sačuvaj `apps/<id>/app.js`.
-3. Ako paket nosi i izmjenu za `server.py` - primijeni je (Edit, ne prepiši cijeli fajl), prateći postojeći `do_POST` dispatch obrazac (`path == '/api/<id>/...'`, vidi `handle_video_compress` u `apps/video-kompresor/app.js`-ovom pratećem server.py bloku kao žive reference) ako se dodaje endpoint.
+3. Ako paket nosi server dio - sačuvaj ga kao `apps/<id>/server_ext.py` (rute `/api/<id>/...`, nikad u core `server.py`).
 
 ## Korak 4 - Registruj u index.html
 
@@ -57,13 +57,13 @@ Ako nešto ne prolazi, ispravi sam ako je očigledno (npr. icon koji ne postoji 
 
 ## Korak 5 - Provjeri PRIJE nego kažeš "gotovo"
 
-1. **Sintaksa.** `node --check apps/<id>/app.js`. Ako je mijenjan i `server.py`: `python3 -c "import ast; ast.parse(open('server.py').read())"` (NE `py_compile` - piše cache fajl koji zna pući na permission greškama u sandboxovanom okruženju).
-2. **Server radi.** `curl -s -o /dev/null -w '%{http_code}' http://localhost:8100/`. Ako nije 200, pokreni ga (`./start-mac.command` na Macu / `start-windows.bat` na Windowsu - vidi CLAUDE.md Korak 3).
-3. **Restart samo ako treba.** Ako je mijenjan `server.py`, server MORA se restartovati da pokupi izmjenu (Python se ne hot-reload-uje kao statični JS/HTML) - `python3 server.py --stop` pa ponovo pokreni. Ako je promijenjen SAMO `app.js`/`index.html`, restart nije potreban - server već šalje `Cache-Control: no-store` na sam HTML, običan refresh u browseru je dovoljan.
+1. **Sintaksa.** Ako je Node dostupan: `node --check apps/<id>/app.js` (ne nudi korisniku instalaciju Node-a samo zbog ovoga - Korak 4 ispod ionako hvata grešku pri učitavanju). Ako postoji `server_ext.py`: `python3 -c "import ast; ast.parse(open('apps/<id>/server_ext.py').read())"` (NE `py_compile` - piše cache fajl koji zna pući na permission greškama u sandboxovanom okruženju). Na Windowsu umjesto `python3` koristi isti Python kao u CLAUDE.md Koraku 2 (obično `py -3`).
+2. **Server radi.** Port pročitaj iz `dashboard.pid` (JSON `{"pid": ..., "port": ...}`) - ne pretpostavljaj 8100, tamo može biti drugi dashboard folder; `curl -s http://localhost:<port>/api/instance` mora vratiti `base_dir` OVOG foldera. Ako ne radi, pokreni ga (`./start-mac.command` na Macu / `start-windows.bat` na Windowsu - vidi CLAUDE.md Korak 3).
+3. **Restart ne treba.** Nov ili izmijenjen `server_ext.py` se učita sam (lijeno, prati vrijeme izmjene fajla). Ni za `app.js`/`index.html` restart nije potreban - server već šalje `Cache-Control: no-store` na sam HTML, običan refresh u browseru je dovoljan.
 4. **Alat se stvarno pojavljuje - provjeri SVAKU formu koju ima, ne samo jednu.** Alat može imati widget formu, app formu, ili obje odjednom (npr. `quick-notes`) - manifest sam kaže koje ima (`widget`/`app` polja), pa provjeri tačno te:
    - **Ima `widget` formu** → otvori katalog (+ dugme dole desno → Alati), prebaci na "Widgeti" prikaz, nađi karticu alata, potvrdi da preview NE prikazuje "Alat je javio grešku".
    - **Ima `app` formu** → u "Aplikacije" prikazu (default) klikni alat da se otvori kao poseban tab, potvrdi da se stranica renderuje bez greške, pa se vrati na Dashboard (klik na "Dashboard" karticu).
-   - Ako nema browser alata dostupnog u ovoj sesiji, minimalna provjera je obavezna za obje forme: `curl -s http://localhost:8100/index.html | grep 'apps/<id>/app.js'` potvrđuje da je script linija stvarno servirana (ne dokazuje da je manifest prošao registraciju ni da forma radi, ali hvata očigledne greške poput fajla koji nije sačuvan).
+   - Ako nema browser alata dostupnog u ovoj sesiji, minimalna provjera je obavezna za obje forme: `curl -s http://localhost:<port>/index.html | grep 'apps/<id>/app.js'` potvrđuje da je script linija stvarno servirana (ne dokazuje da je manifest prošao registraciju ni da forma radi, ali hvata očigledne greške poput fajla koji nije sačuvan).
 5. **Ako alat ima `widget` formu i korisnik već ima pripremljenu, imenovanu praznu sekciju za njega** - podsjeti ga (ne radi sam, pozicija/veličina je njegov izbor) da otvori njen meni (•••) → "Poveži alat..." da ga odmah prikaže tamo, umjesto da traži isti alat u katalogu i dodaje novu odvojenu karticu.
 
 ## Šta NE raditi

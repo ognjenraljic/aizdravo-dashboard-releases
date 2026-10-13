@@ -116,6 +116,11 @@ class KatalogTest(unittest.TestCase):
         # keš čuva samo zipove alata
         self.assertEqual(len(list((self.base / '.katalog' / 'cache').glob('*.zip'))), 2)
 
+    def test_manifest_u_jednom_redu(self):
+        src = "AIZdravo.registerApp({ id: 'mini', name: 'Ana\\'s alat', version: '1.2.0', icon: 'tool', description: 'x', widget(el) { el.textContent = 1; } });"
+        m = katalog._manifest_from_source(src)
+        self.assertEqual((m['id'], m['name'], m['version'], m['widget'], m['app']), ('mini', "Ana's alat", '1.2.0', True, False))
+
     def test_odbija_link_van_platforme_bez_preuzimanja(self):
         bad = {'id': 'resource:bad', 'title': 'x', 'text': 'Kompatibilno sa: AI Zdravo Dashboard',
                'metadata': {'download': {'url': 'https://example.com/storage/v1/object/public/ai-sistem-files/x.zip'}}}
@@ -157,6 +162,32 @@ class KatalogTest(unittest.TestCase):
         self.assertIn("version: '2.0.0'", (self.base / 'apps' / 'qr' / 'app.js').read_text())
         self.assertTrue(archived and (archived / 'app.js').exists())
         self.assertEqual(list((self.base / '.katalog').glob('staging-*')), [])
+
+    def test_azuriranje_zadrzi_korisnikove_fajlove(self):
+        """Paket nosi .env sa placeholderom: korisnikov pravi ključ i fajlovi
+        koje je dodao (npr. paket ikonica) moraju preživjeti ažuriranje."""
+        z = make_zip(self.src / 'a.zip', {
+            'tts/app.js': app_js('tts', '2.0.0'),
+            'tts/.env': 'API_KEY=upisi-svoj-kljuc\n',
+            'tts/.env.example': 'API_KEY=primjer-novi\n',
+            'tts/packs/osnovni/meta.json': '{"v": 2}',
+        })
+        katalog.sync([self.resource('a', z)], self.base)
+        old = self.base / 'apps' / 'tts'
+        (old / 'packs' / 'moj').mkdir(parents=True)
+        (old / 'packs' / 'moj' / 'meta.json').write_text('{"moj": true}')
+        (old / 'packs' / 'osnovni').mkdir(parents=True)
+        (old / 'packs' / 'osnovni' / 'meta.json').write_text('{"v": 1}')
+        (old / 'app.js').write_text(app_js('tts', '1.0.0'))
+        (old / '.env').write_text('API_KEY=pravi-kljuc\n')
+        (old / '.env.example').write_text('API_KEY=primjer-stari\n')
+        katalog.install('resource:a', 'tts', self.base)
+        new = self.base / 'apps' / 'tts'
+        self.assertEqual((new / '.env').read_text(), 'API_KEY=pravi-kljuc\n')
+        self.assertEqual((new / '.env.example').read_text(), 'API_KEY=primjer-novi\n')
+        self.assertTrue((new / 'packs' / 'moj' / 'meta.json').exists())
+        self.assertEqual((new / 'packs' / 'osnovni' / 'meta.json').read_text(), '{"v": 2}')
+        self.assertIn("version: '2.0.0'", (new / 'app.js').read_text())
 
     def test_instalacija_odbija_promijenjen_zip(self):
         z = make_zip(self.src / 'a.zip', {'qr/app.js': app_js('qr')})

@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import tempfile
@@ -19,9 +20,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
+# Windows konzola/pipe je često cp1252: print sa č/ć/đ bi bacio
+# UnicodeEncodeError (1.7.1). errors='replace' nikad ne ruši ispis.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding='utf-8', errors='replace')
+    except (AttributeError, ValueError):
+        pass
+
 DEFAULT_PORT = 8100
 MAX_PORT_ATTEMPTS = 10
-BASE_DIR = Path(__file__).parent
+BASE_DIR = Path(__file__).resolve().parent  # resolve: na Pythonu 3.8 je __file__ relativan
 # 24.7.2026 - server se sad pokreće detached (vidi start-mac.command/
 # start-windows.bat), pa mu treba način da se čisto zaustavi bez da se
 # traži proces preko lsof/Task Manager-a. Pid fajl (gitignored, per-
@@ -39,10 +48,21 @@ ERROR_LOG = BASE_DIR / 'errors.jsonl'
 # ikad ne pokupi), sa timestamp sufiksom kod imenskog sudara. Isti princip
 # kao svuda u dashboardu (nikad tiho ne brisati korisnikove podatke): dugme i dalje kaže "trajno", ali stvarno se ne brise sa diska.
 APPS_ARCHIVE_DIR = BASE_DIR / '_apps_archive'
+# "Učitaj alat" (1.7.1): upload ide ovamo, u apps/<id>/ tek kad sve stigne.
+INSTALL_STAGING_DIR = BASE_DIR / '.install-staging'
+# Folderi koji se nikad ne serviraju statički (provjera nad razriješenom
+# putanjom u translate_path, pa ni /%2e/.katalog ne prolazi).
+BLOCKED_TOP_DIRS = {'.katalog', '.install-staging', '.git'}
+# id-jevi koje plugin ne smije zauzeti (core rute /api/<ovo>/...).
+RESERVED_APP_IDS = {'state', 'instance', 'katalog', 'apps', 'log-error', 'shutdown'}
+# Izmjene index.html (instalacija, katalog, brisanje) idu jedna po jedna.
+INDEX_LOCK = threading.Lock()
 STATE_FILE = BASE_DIR / 'dashboard-state.json'
 STATE_TMP_FILE = BASE_DIR / 'dashboard-state.json.tmp'
 STATE_LOCK = threading.Lock()
-MAX_STATE_BYTES = 1024 * 1024
+# 1.7.1: bilo 1MB - alat smije 200KB u ctx.storage, pa je par alata
+# prelazilo limit i čuvanje cijelog stanja (PUT) je padalo sa 413.
+MAX_STATE_BYTES = 8 * 1024 * 1024
 MAX_ERROR_LOG_BYTES = 256 * 1024
 MAX_ERROR_LINES = 200
 # Trajno brisanje alata (27.7.2026, katalog "Ukloni trajno") - isti id
@@ -204,7 +224,7 @@ def _dispatch_plugin_route(handler, method, path):
     if len(parts) < 3 or parts[0] != '' or parts[1] != 'api':
         return False
     app_id = parts[2]
-    if not APP_ID_RE.match(app_id):
+    if not APP_ID_RE.match(app_id) or app_id in RESERVED_APP_IDS:
         return False
     module = _load_plugin(app_id)
     if module is None:
@@ -251,6 +271,37 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         host = (self.headers.get('Host') or '').split(':')[0].lower()
         return host in ('localhost', '127.0.0.1')
 
+    def _origin_ok(self):
+        """CSRF zaštita (1.7.1). _host_ok ne pomaže kad TUĐA stranica pošalje
+        fetch na http://localhost:8100 - Host je tada baš localhost. Browser
+        uz takav zahtjev šalje Origin (i Sec-Fetch-Site), pa se prihvata
+        samo zahtjev sa OVOG dashboarda. Bez Origin-a (curl, AI asistent,
+        skripte na istom računaru) je u redu - to nije browser napad."""
+        site = (self.headers.get('Sec-Fetch-Site') or '').lower()
+        if site in ('cross-site', 'same-site'):
+            # same-site = i drugi port na localhostu (npr. neki dev server)
+            return False
+        origin = self.headers.get('Origin')
+        if origin is None:
+            return True
+        try:
+            parts = urlsplit(origin)
+            port = parts.port or 80
+        except ValueError:
+            return False
+        return (parts.scheme == 'http'
+                and parts.hostname in ('localhost', '127.0.0.1')
+                and port == self.server.server_address[1])
+
+    def _request_ok(self, mutating):
+        if not self._host_ok():
+            self.send_json(403, {'error': 'nedozvoljen host'})
+            return False
+        if mutating and not self._origin_ok():
+            self.send_json(403, {'error': 'zahtjev sa druge stranice nije dozvoljen'})
+            return False
+        return True
+
     def translate_path(self, path):
         # Path-traversal/symlink-escape zaštita (27.7.2026, Codex bezbjednosni
         # audit) - SimpleHTTPRequestHandler prati simlinkove bez provjere. Alat
@@ -260,8 +311,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         translated = super().translate_path(path)
         try:
             resolved = Path(translated).resolve()
-            resolved.relative_to(BASE_DIR.resolve())
+            rel = resolved.relative_to(BASE_DIR.resolve())
         except (ValueError, OSError):
+            return str(BASE_DIR.resolve() / '__blocked_path__')
+        if rel.parts and rel.parts[0].lower() in BLOCKED_TOP_DIRS:
             return str(BASE_DIR.resolve() / '__blocked_path__')
         return str(resolved)
 
@@ -298,11 +351,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         }
         serialized = json.dumps(payload, ensure_ascii=False, indent=2) + '\n'
         STATE_TMP_FILE.write_text(serialized, encoding='utf-8')
-        STATE_TMP_FILE.replace(STATE_FILE)
+        # Windows: OneDrive/antivirus zna na tren zaključati fajl stanja.
+        for attempt in range(5):
+            try:
+                STATE_TMP_FILE.replace(STATE_FILE)
+                return
+            except PermissionError:
+                if attempt == 4:
+                    raise
+                time.sleep(0.08)
 
     def do_GET(self):
-        if not self._host_ok():
-            self.send_json(403, {'error': 'nedozvoljen host'})
+        if not self._request_ok(mutating=urlsplit(self.path).path.startswith('/api/')):
             return
         path = urlsplit(self.path).path
         if path == '/api/instance':
@@ -312,14 +372,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             # portu" - title-tag string je isti za sve foldere (svi se
             # zovu "AI Zdravo Dashboard"), pa sam po sebi ne dokazuje
             # da je riječ o istoj instanci.
-            self.send_json(200, {'base_dir': str(BASE_DIR.resolve())})
+            self.send_json(200, {'base_dir': str(BASE_DIR.resolve()), 'pid': os.getpid()})
             return
         if path == '/api/katalog':
             self.handle_katalog_get()
-            return
-        if unquote(path).lower().lstrip('/').startswith('.katalog'):
-            # Keš zipova i radni folderi kataloga nisu za browser.
-            self.send_json(404, {'error': 'not_found'})
             return
         if _dispatch_plugin_route(self, 'GET', path):
             return
@@ -346,8 +402,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_json(500, {'error': 'state_read_failed', 'detail': str(exc)})
 
     def do_PUT(self):
-        if not self._host_ok():
-            self.send_json(403, {'error': 'nedozvoljen host'})
+        if not self._request_ok(mutating=True):
             return
         if urlsplit(self.path).path != '/api/state':
             self.send_json(404, {'error': 'not_found'})
@@ -370,8 +425,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_json(500, {'error': 'state_write_failed', 'detail': str(exc)})
 
     def do_PATCH(self):
-        if not self._host_ok():
-            self.send_json(403, {'error': 'nedozvoljen host'})
+        if not self._request_ok(mutating=True):
             return
         if urlsplit(self.path).path != '/api/state':
             self.send_json(404, {'error': 'not_found'})
@@ -390,7 +444,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     if not isinstance(values, dict):
                         values = {}
                 else:
-                    values = {}
+                    # 1.7.1: bez fajla stanja PATCH bi napravio fajl sa samo
+                    # ovih par ključeva, a sljedeće učitavanje bi obrisalo sve
+                    # ostalo u browseru. Browser na 409 šalje cijelo stanje (PUT).
+                    self.send_json(409, {'error': 'state_missing'})
+                    return
 
                 for key, value in changes.items():
                     if not isinstance(key, str) or not key.startswith('aizdravo:') or key == 'aizdravo:error-log':
@@ -411,8 +469,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_json(500, {'error': 'state_patch_failed', 'detail': str(exc)})
 
     def do_POST(self):
-        if not self._host_ok():
-            self.send_json(403, {'error': 'nedozvoljen host'})
+        if not self._request_ok(mutating=True):
             return
         path = urlsplit(self.path).path
         if path == '/api/log-error':
@@ -432,6 +489,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
         if path == '/api/katalog/install':
             self.handle_katalog_install()
+            return
+        if path == '/api/shutdown':
+            # --stop (1.7.1): uredno gašenje umjesto ubijanja procesa -
+            # plugin hookovi se izvrše i na Windowsu, a proces izađe sa 0.
+            self.send_json(200, {'ok': True})
+            threading.Thread(target=self.server.shutdown, daemon=True).start()
             return
         if _dispatch_plugin_route(self, 'POST', path):
             return
@@ -518,9 +581,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             dest = APPS_ARCHIVE_DIR / archive_name
             if dest.exists():
                 shutil.rmtree(dest)
-            shutil.move(str(app_dir), str(dest))
+            _move_dir(app_dir, dest)
         except OSError as exc:
-            self.send_json(500, {'ok': False, 'error': 'delete_failed', 'message': str(exc)})
+            self.send_json(409, {'ok': False, 'error': 'delete_failed', 'message': _move_error_message(exc)})
             return
 
         # Skini script liniju iz index.html - bez ovoga bi sljedeći load
@@ -529,24 +592,29 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # obzira na ishod ovog koraka.
         script_warning = None
         try:
-            index_path = BASE_DIR / 'index.html'
-            content = index_path.read_text(encoding='utf-8')
-            pattern = re.compile(
-                r'[ \t]*<script src="apps/' + re.escape(app_id) + r'/app\.js(\?v=\d+)?"></script>\r?\n?'
-            )
-            new_content = pattern.sub('', content)
-            if new_content != content:
-                index_path.write_text(new_content, encoding='utf-8')
-            else:
-                script_warning = 'script_line_not_found'
+            with INDEX_LOCK:
+                index_path = BASE_DIR / 'index.html'
+                content = index_path.read_text(encoding='utf-8')
+                pattern = re.compile(
+                    r'[ \t]*<script src="apps/' + re.escape(app_id) + r'/app\.js(\?v=\d+)?"></script>\r?\n?'
+                )
+                new_content = pattern.sub('', content)
+                if new_content != content:
+                    index_path.write_text(new_content, encoding='utf-8')
+                else:
+                    script_warning = 'script_line_not_found'
         except OSError as exc:
             script_warning = str(exc)
 
         self.send_json(200, {'ok': True, 'warning': script_warning})
 
     def handle_install_begin(self):
-        """"Učitaj alat" Korak 1 - napravi (ili očisti, ako je zamjena)
-        apps/<id>/ folder prije upload-a pojedinačnih fajlova."""
+        """"Učitaj alat" Korak 1 - pripremi privremeni folder za upload.
+        Od 1.7.1 fajlovi NE idu direktno u apps/<id>/: postojeći alat
+        ostaje netaknut dok svi fajlovi ne stignu (prekinut upload ga više
+        ne ostavlja polovičnog), a zamjena u Koraku 3 zadrži korisnikove
+        fajlove (.env ključevi, dodati paketi) i arhivira staru verziju
+        umjesto da je obriše."""
         try:
             payload = self.read_json_body(max_bytes=4096)
         except Exception:
@@ -564,18 +632,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_json(400, {'ok': False, 'error': 'invalid_path', 'message': 'Nevažeća putanja.'})
             return
 
-        if app_dir.exists():
-            if not overwrite:
-                self.send_json(409, {'ok': False, 'error': 'already_exists', 'message': 'Alat sa ovim id-om već postoji.'})
-                return
-            try:
-                shutil.rmtree(app_dir)
-            except OSError as exc:
-                self.send_json(500, {'ok': False, 'error': 'cleanup_failed', 'message': str(exc)})
-                return
+        if app_dir.exists() and not overwrite:
+            self.send_json(409, {'ok': False, 'error': 'already_exists', 'message': 'Alat sa ovim id-om već postoji.'})
+            return
 
+        staging = INSTALL_STAGING_DIR / app_id
         try:
-            app_dir.mkdir(parents=True)
+            if staging.exists():
+                shutil.rmtree(staging)
+            staging.mkdir(parents=True)
         except OSError as exc:
             self.send_json(500, {'ok': False, 'error': 'mkdir_failed', 'message': str(exc)})
             return
@@ -591,9 +656,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if not APP_ID_RE.match(app_id):
             self.send_json(400, {'ok': False, 'error': 'invalid_id'})
             return
-        apps_root = (BASE_DIR / 'apps').resolve()
-        app_dir = (apps_root / app_id).resolve()
-        if app_dir.parent != apps_root or not app_dir.is_dir():
+        staging_root = INSTALL_STAGING_DIR.resolve()
+        app_dir = (staging_root / app_id).resolve()
+        if app_dir.parent != staging_root or not app_dir.is_dir():
             self.send_json(400, {'ok': False, 'error': 'not_begun', 'message': 'Pozovi /install/begin prvo.'})
             return
 
@@ -630,6 +695,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         except OSError as exc:
             self.send_json(500, {'ok': False, 'error': 'write_failed', 'message': str(exc)})
             return
+        if remaining > 0:
+            # Prekinut prenos: skraćen fajl ne smije proći kao uspjeh.
+            try:
+                target.unlink()
+            except OSError:
+                pass
+            self.send_json(400, {'ok': False, 'error': 'incomplete', 'message': 'Fajl nije stigao cijeli - probaj ponovo.'})
+            return
 
         self.send_json(200, {'ok': True})
 
@@ -649,10 +722,30 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
 
         apps_root = (BASE_DIR / 'apps').resolve()
-        app_js = (apps_root / app_id / 'app.js').resolve()
-        if app_js.parent.parent != apps_root or not app_js.is_file():
+        app_dir = (apps_root / app_id).resolve()
+        staging = (INSTALL_STAGING_DIR / app_id).resolve()
+        if app_dir.parent != apps_root or not (staging / 'app.js').is_file():
             self.send_json(400, {'ok': False, 'error': 'app_js_missing', 'message': 'app.js nije pronađen - upload nije završen.'})
             return
+
+        try:
+            if app_dir.exists():
+                # Korisnikovi fajlovi iz stare verzije prelaze u novu; ako
+                # tools/katalog.py fali (polovičan update), stara verzija
+                # ipak ide u arhivu cijela, ništa se ne briše.
+                try:
+                    _load_katalog_module().carry_over_user_files(app_dir, staging)
+                except Exception as exc:
+                    print(f'[install] prenos korisnikovih fajlova preskočen: {exc}', file=sys.stderr)
+                APPS_ARCHIVE_DIR.mkdir(exist_ok=True)
+                archived = APPS_ARCHIVE_DIR / f'{app_id}_{time.strftime("%Y%m%d%H%M%S")}'
+                _move_dir(app_dir, archived)
+            _move_dir(staging, app_dir)
+        except OSError as exc:
+            self.send_json(409, {'ok': False, 'error': 'replace_failed', 'message': _move_error_message(exc)})
+            return
+        with _PLUGIN_CACHE_LOCK:
+            _PLUGIN_CACHE.pop(app_id, None)
 
         try:
             script_version = _register_app_script(app_id)
@@ -741,21 +834,36 @@ def _register_app_script(app_id):
     alat" (install/finish) i AI Zdravo katalog."""
     script_version = int(time.time())
     try:
-        index_path = BASE_DIR / 'index.html'
-        content = index_path.read_text(encoding='utf-8')
-        pattern = re.compile(
-            r'[ \t]*<script src="apps/' + re.escape(app_id) + r'/app\.js(\?v=\d+)?"></script>\r?\n?'
-        )
-        content = pattern.sub('', content)
-        marker = '<!-- =================== KRAJ APLIKACIJA ========================== -->'
-        new_line = f'<script src="apps/{app_id}/app.js?v={script_version}"></script>\n'
-        if marker not in content:
-            raise _ScriptLineError('marker_missing', 'index.html nema APLIKACIJE blok marker.')
-        content = content.replace(marker, new_line + marker, 1)
-        index_path.write_text(content, encoding='utf-8')
+        with INDEX_LOCK:
+            index_path = BASE_DIR / 'index.html'
+            content = index_path.read_text(encoding='utf-8')
+            pattern = re.compile(
+                r'[ \t]*<script src="apps/' + re.escape(app_id) + r'/app\.js(\?v=\d+)?"></script>\r?\n?'
+            )
+            content = pattern.sub('', content)
+            marker = '<!-- =================== KRAJ APLIKACIJA ========================== -->'
+            new_line = f'<script src="apps/{app_id}/app.js?v={script_version}"></script>\n'
+            if marker not in content:
+                raise _ScriptLineError('marker_missing', 'index.html nema APLIKACIJE blok marker.')
+            content = content.replace(marker, new_line + marker, 1)
+            index_path.write_text(content, encoding='utf-8')
     except OSError as exc:
         raise _ScriptLineError('index_write_failed', str(exc)) from exc
     return script_version
+
+
+def _move_dir(src, dst):
+    """Premjesti folder alata JEDNIM rename-om (isti disk - sve je unutar
+    dashboard foldera). shutil.move bi na Windowsu, kad je neki fajl
+    zaključan (ffmpeg, antivirus, Explorer), prešao na kopiraj+obriši i
+    ostavio polu-obrisan alat; rename ili uspije cijeli ili ništa."""
+    os.rename(str(src), str(dst))
+
+
+def _move_error_message(exc):
+    return ('Ne mogu premjestiti folder alata - neki fajl u njemu je možda otvoren '
+            '(alat radi, ili ga drži drugi program). Zatvori ga pa probaj ponovo. '
+            f'({exc})')
 
 
 _KATALOG_MODULE = None
@@ -789,27 +897,87 @@ def _handle_sigterm(signum, frame):
     sys.exit(0)
 
 
+class DashboardHTTPServer(http.server.ThreadingHTTPServer):
+    """Na Windowsu SO_REUSEADDR (podrazumijevan u http.server) dozvoljava
+    DRUGOM procesu da sjedne na port koji već sluša - dva dashboarda na
+    8100, browser nasumično dobija jedan. Tamo zato isključiv port."""
+    daemon_threads = True
+    allow_reuse_address = not sys.platform.startswith('win')
+
+    def server_bind(self):
+        if sys.platform.startswith('win') and hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
+def _read_pidfile():
+    """(pid, port) iz pid fajla; stari format (samo pid) daje port None."""
+    try:
+        raw = PID_FILE.read_text(encoding='utf-8').strip()
+    except OSError:
+        return None, None
+    try:
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            return int(data.get('pid')), (int(data['port']) if data.get('port') else None)
+        return int(data), None
+    except (ValueError, TypeError):
+        return None, None
+
+
+def _instance_on(port):
+    """Odgovor /api/instance na portu, ili None."""
+    try:
+        with urllib.request.urlopen(f'http://127.0.0.1:{port}/api/instance', timeout=0.6) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+            return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
 def stop_running():
-    """--stop: zaustavlja server pokrenut ranije (npr. preko detached
-    launchera) preko sačuvanog pid-a - ne treba lsof/Task Manager."""
-    if not PID_FILE.exists():
-        print('AI Zdravo Dashboard trenutno ne radi (nema pid fajla).')
-        return
-    try:
-        pid = int(PID_FILE.read_text(encoding='utf-8').strip())
-    except (OSError, ValueError):
-        print('Pid fajl je nevažeći - brišem ga.')
+    """--stop: zaustavlja server OVOG foldera (1.7.1). Prvo ga nađe preko
+    /api/instance (isti base_dir), pa ga zamoli da se ugasi preko
+    /api/shutdown. Nikad ne ubija proces samo po broju iz pid fajla - posle
+    restarta računara taj broj može pripadati nekom sasvim drugom procesu."""
+    pid, port = _read_pidfile()
+    ports = [port] if port else []
+    ports += [p for p in range(DEFAULT_PORT, DEFAULT_PORT + MAX_PORT_ATTEMPTS) if p not in ports]
+    mine = str(BASE_DIR.resolve())
+    for candidate in ports:
+        info = _instance_on(candidate)
+        if not info or info.get('base_dir') != mine:
+            continue
+        try:
+            req = urllib.request.Request(f'http://127.0.0.1:{candidate}/api/shutdown', data=b'{}',
+                                         headers={'Content-Type': 'application/json'})
+            urllib.request.urlopen(req, timeout=2).read()
+            for _ in range(50):
+                if not _instance_on(candidate):
+                    break
+                time.sleep(0.1)
+            print(f'AI Zdravo Dashboard (port {candidate}) zaustavljen.')
+            _cleanup_pidfile()
+            return
+        except Exception:
+            # Starija verzija servera bez /api/shutdown: ugasi baš taj proces
+            # (pid potvrđen preko /api/instance ili iz pid fajla istog foldera).
+            target = info.get('pid') or pid
+            if not target:
+                print('Ne mogu zaustaviti dashboard - zatvori njegov prozor ili restartuj računar.')
+                return
+            try:
+                os.kill(int(target), signal.SIGTERM)
+                print(f'AI Zdravo Dashboard (pid {target}) zaustavljen.')
+                _cleanup_pidfile()
+            except OSError as exc:
+                print(f'Ne mogu zaustaviti proces {target}: {exc}')
+            return
+    if PID_FILE.exists():
+        print('AI Zdravo Dashboard ovog foldera trenutno ne radi (stari pid fajl obrisan).')
         _cleanup_pidfile()
-        return
-    try:
-        os.kill(pid, signal.SIGTERM)
-        print(f'AI Zdravo Dashboard (pid {pid}) zaustavljen.')
-    except ProcessLookupError:
-        print('Proces više ne postoji - dashboard je već ugašen.')
-    except PermissionError:
-        print(f'Nemam dozvolu da zaustavim proces {pid}.')
-    finally:
-        _cleanup_pidfile()
+    else:
+        print('AI Zdravo Dashboard trenutno ne radi.')
 
 
 def is_dashboard_already_running(port):
@@ -851,7 +1019,7 @@ def main():
     for offset in range(MAX_PORT_ATTEMPTS):
         candidate = args.port + offset
         try:
-            server = http.server.ThreadingHTTPServer(('127.0.0.1', candidate), Handler)
+            server = DashboardHTTPServer(('127.0.0.1', candidate), Handler)
             port = candidate
             break
         except OSError:
@@ -872,7 +1040,7 @@ def main():
         print(f'Zatvori druge programe koji ih koriste, ili pokreni: python3 server.py --port 9000')
         sys.exit(1)
 
-    PID_FILE.write_text(str(os.getpid()), encoding='utf-8')
+    PID_FILE.write_text(json.dumps({'pid': os.getpid(), 'port': port}), encoding='utf-8')
     atexit.register(_cleanup_pidfile)
     signal.signal(signal.SIGTERM, _handle_sigterm)
 
@@ -886,8 +1054,11 @@ def main():
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        _run_plugin_shutdown_hooks()
-        print('\nDashboard zaustavljen.')
+        pass
+    # Ctrl+C ili /api/shutdown (--stop): uredno pospremi pluginove.
+    _run_plugin_shutdown_hooks()
+    server.server_close()
+    print('\nDashboard zaustavljen.')
 
 
 if __name__ == '__main__':

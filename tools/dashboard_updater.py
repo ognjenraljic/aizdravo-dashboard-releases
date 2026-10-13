@@ -15,6 +15,7 @@ import argparse
 import ast
 import hashlib
 import json
+import re
 import shutil
 import sys
 import time
@@ -42,6 +43,8 @@ CORE_FILES = [
     '.claude/skills/katalog/SKILL.md',
     '.agents/skills/katalog/SKILL.md',
     'tools/katalog.py',
+    # Stvarna adresa ovog foldera za start skripte i AI (1.7.1).
+    'tools/dashboard_url.py',
     'tools/dashboard_updater.py',
     'MANIFEST.json',
 ]
@@ -53,6 +56,7 @@ NEVER_TOUCH = {
     '.aizdravo-welcomed', 'dashboard.pid',
     'dashboard-autostart.log', 'errors.jsonl',
     '.katalog',  # katalog i keš zipova su per-korisnik (tools/katalog.py)
+    '.install-staging',  # privremeni upload "Učitaj alat" (1.7.1)
 }
 
 # Kratke, stabilne podniske - otporne na promjenu broja "=" znakova ili
@@ -147,6 +151,24 @@ def backup_folder(current_dir):
     return backup_dir
 
 
+def _restore_from_backup(current_dir, backup_dir, rels):
+    for rel in rels:
+        dest = current_dir / rel
+        old = backup_dir / rel
+        try:
+            if old.exists():
+                shutil.copyfile(old, dest)
+            elif dest.exists():
+                dest.unlink()
+        except OSError:
+            pass
+
+
+def _version_key(text):
+    nums = [int(x) for x in re.findall(r'\d+', text or '')[:4]]
+    return nums + [0] * (4 - len(nums))
+
+
 def _is_safe_extra(rel):
     """Fajl iz MANIFEST-a nove verzije koji nije u CORE_FILES ove (starije)
     skripte: samo obična relativna putanja van korisnikovih podataka."""
@@ -206,20 +228,29 @@ def apply_update(current_dir, staging_dir, manifest=None, auto_merge_server=Fals
     backup_dir = backup_folder(current_dir)
 
     applied = []
-    for rel in update_file_list(manifest):
-        src = staging_dir / rel
-        if not src.exists():
-            continue
-        if rel == 'index.html':
-            (current_dir / rel).write_text(merged_index, encoding='utf-8')
+    touched = []
+    try:
+        for rel in update_file_list(manifest):
+            src = staging_dir / rel
+            if not src.exists():
+                continue
+            if rel == 'server.py' and skip_server:
+                continue
+            touched.append(rel)
+            if rel == 'index.html':
+                (current_dir / rel).write_text(merged_index, encoding='utf-8')
+                applied.append(rel)
+                continue
+            dest = current_dir / rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(src, dest)
             applied.append(rel)
-            continue
-        if rel == 'server.py' and skip_server:
-            continue
-        dest = current_dir / rel
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(src, dest)
-        applied.append(rel)
+    except OSError as exc:
+        # 1.7.1: prije je greška usred kopiranja (npr. Windows antivirus
+        # zaključa fajl) ostavljala mješavinu stare i nove verzije. Sad se
+        # svaki već dirnut fajl vraća iz backupa (ili briše ako je nov).
+        _restore_from_backup(current_dir, backup_dir, touched)
+        raise UpdateError(f'update prekinut na fajlu ({exc}); sve je vraćeno iz backupa: {backup_dir}') from exc
 
     return {
         'backup_dir': str(backup_dir),
@@ -234,6 +265,8 @@ def main():
     parser.add_argument('current_dir', help='folder dashboarda koji se ažurira')
     parser.add_argument('--source-dir', required=True, help='lokalni folder sa novom verzijom core-a (raspakovan zip nove verzije)')
     parser.add_argument('--auto-merge-server', action='store_true', help='primijeni server.py i ako ima customizaciju (default: preskoči i prijavi)')
+    parser.add_argument('--allow-downgrade', action='store_true', help='dozvoli primjenu STARIJE verzije od trenutne')
+    parser.add_argument('--no-manifest', action='store_true', help='dozvoli izvor bez MANIFEST.json (bez hash provjere)')
     args = parser.parse_args()
 
     # .resolve() je OBAVEZAN ovdje - dokumentacija (SKILL.md) instruira
@@ -248,6 +281,19 @@ def main():
     staging_dir = Path(args.source_dir)
     manifest_path = staging_dir / 'MANIFEST.json'
     manifest = json.loads(manifest_path.read_text(encoding='utf-8')) if manifest_path.exists() else None
+    if manifest is None and not args.no_manifest:
+        print('Update prekinut: izvor nema MANIFEST.json (nekompletan ili pogrešan folder).', file=sys.stderr)
+        sys.exit(1)
+
+    def _read_version(folder):
+        try:
+            return (folder / 'VERSION').read_text(encoding='utf-8').strip()
+        except OSError:
+            return '0.0.0'
+    cur_v, new_v = _read_version(current_dir), _read_version(staging_dir)
+    if _version_key(new_v) < _version_key(cur_v) and not args.allow_downgrade:
+        print(f'Update prekinut: izvor je STARIJA verzija ({new_v}) od trenutne ({cur_v}).', file=sys.stderr)
+        sys.exit(1)
 
     try:
         report = apply_update(current_dir, staging_dir, manifest=manifest, auto_merge_server=args.auto_merge_server)
@@ -259,4 +305,10 @@ def main():
 
 
 if __name__ == '__main__':
+    # Windows pipe (AI asistent pokreće skriptu) je često cp1252 bez č/ć/đ.
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding='utf-8', errors='replace')
+        except (AttributeError, ValueError):
+            pass
     main()

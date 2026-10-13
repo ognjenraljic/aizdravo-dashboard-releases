@@ -23,3 +23,6 @@ _apps_archive/*
 # AI Zdravo katalog (v1.7.0) - katalog.json i keš zipova sa platforme,
 # per-korisnik, puni ga tools/katalog.py.
 .katalog/
+
+# "Učitaj alat" privremeni upload folder (1.7.1).
+.install-staging/

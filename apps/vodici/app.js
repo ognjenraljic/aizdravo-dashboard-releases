@@ -373,7 +373,7 @@ const VD_DOBRODOSLI_SECTIONS = [
   },
   {
     title: 'Napravi svoj alat',
-    text: 'Dva puta do novog alata: opiši Claude-u ili Codex-u šta želiš (ili zalijepi gotov prompt) - sam napiše kod i registruje ga. Ili prevuci gotov folder u <code>apps/</code> (npr. sa drugog dashboarda) i reci mu da ga učita. Widget odmah dodaješ na board iz kataloga, ili ga povežeš sa već pripremljenom sekcijom preko njenog menija ("Poveži alat").',
+    text: 'Tri puta do novog alata: opiši Claude-u ili Codex-u šta želiš (ili zalijepi gotov prompt) - sam napiše kod i registruje ga. Ili prevuci gotov folder u <code>apps/</code> (npr. sa drugog dashboarda) i reci mu da ga učita. Ili instaliraj gotov alat sa AI Zdravo platforme jednim klikom (+ → Alati → AI Zdravo). Widget odmah dodaješ na board iz kataloga, ili ga povežeš sa već pripremljenom sekcijom preko njenog menija ("Poveži alat").',
   },
   {
     title: 'Otvaranje aplikacije',

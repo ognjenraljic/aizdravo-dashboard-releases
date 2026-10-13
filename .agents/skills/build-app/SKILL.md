@@ -72,25 +72,25 @@ Dodaj `<script src="apps/<id>/app.js?v=1"></script>` unutar bloka "APLIKACIJE (a
 Ovo nije opciona higijena — ovo je CIJELA poenta. Prođi kroz svaku stavku iz `APPS_AND_WIDGETS.md` sekcije "Prenosivost", eksplicitno:
 
 1. **`app.js` je direktno u `apps/<id>/`**, ne u podfolderu.
-2. **Samodovoljnost — stvaran izolovan test, ne pretpostavka.** Kopiraj `apps/<id>/` u prazan privremeni folder (`cp -R apps/<id>/ /tmp/portability-test-<id>/`) i provjeri da NIJEDAN fajl unutra ne referencira ništa apsolutnom putanjom sa OVOG računara, niti fajl iz nekog DRUGOG alata (`grep -rn "/Users/\|/home/\|C:\\\\" apps/<id>/` — prazan izlaz = prošlo). Svaka biblioteka/slika/JSON koju `app.js` učitava mora fizički biti UNUTAR tog istog foldera, referencirana relativno.
+2. **Samodovoljnost — stvaran izolovan test, ne pretpostavka.** Kopiraj `apps/<id>/` u prazan privremeni folder (npr. `cp -R apps/<id>/ "$TMPDIR/portability-test-<id>/"`; na Windowsu `%TEMP%`) i provjeri da NIJEDAN fajl unutra ne referencira ništa apsolutnom putanjom sa OVOG računara, niti fajl iz nekog DRUGOG alata (`grep -rn "/Users/\|/home/\|C:\\\\" apps/<id>/` — prazan izlaz = prošlo). Svaka biblioteka/slika/JSON koju `app.js` učitava mora fizički biti UNUTAR tog istog foldera, referencirana relativno.
 3. **`id` u manifestu odgovara imenu foldera.**
 4. **`version: '1.0.0'`** stoji u manifestu (Korak 2 — ponovo provjeri da nije zaboravljeno ili promijenjeno tokom pisanja).
 5. **Server dio (ako postoji) je isključivo u `apps/<id>/server_ext.py`** — nula pretpostavki da ciljni dashboard već ima nešto ručno dodano u svom `server.py`.
 6. **`icon` postoji u OVOM `index.html`-u** (provjereno u Koraku 2) — na drugom dashboardu isti core simbol set postoji po dizajnu (core fajl, dio svakog izdanja), pa ova provjera ovdje već garantuje i tamo.
 7. **`ctx.storage`, ne `localStorage`** (provjereno u Koraku 2) — garantuje da se na NOVOM dashboardu alat učita prazan/default, ne vuče tuđe podatke.
 
-Obriši `/tmp/portability-test-<id>/` poslije provjere.
+Obriši taj privremeni folder poslije provjere.
 
 ## Korak 7 — Provjeri da alat STVARNO radi (ista disciplina kao `install-app` Korak 5)
 
-1. **Sintaksa.** `node --check apps/<id>/app.js`. Ako je pisan `server_ext.py`: `python3 -c "import ast; ast.parse(open('apps/<id>/server_ext.py').read())"`.
-2. **Server dostupan.** `curl -s -o /dev/null -w '%{http_code}' http://localhost:8100/` — ako nije 200, pokreni (`./start-mac.command`/`start-windows.bat`).
+1. **Sintaksa.** Ako je Node dostupan: `node --check apps/<id>/app.js` (ne nudi instalaciju Node-a samo zbog ovoga - Korak 4 hvata grešku pri učitavanju). Ako je pisan `server_ext.py`: `python3 -c "import ast; ast.parse(open('apps/<id>/server_ext.py').read())"`. Na Windowsu umjesto `python3` koristi isti Python kao u CLAUDE.md Koraku 2 (obično `py -3`).
+2. **Server dostupan.** Port pročitaj iz `dashboard.pid` (JSON `{"pid": ..., "port": ...}`) - ne pretpostavljaj 8100, tamo može biti drugi dashboard folder; `curl -s http://localhost:<port>/api/instance` mora vratiti `base_dir` OVOG foldera. Ako ne radi, pokreni (`./start-mac.command`/`start-windows.bat`).
 3. **Nov `server_ext.py` NE traži restart** (lijeno učitavanje, vidi Korak 4) — samo `app.js`/`index.html` izmjena, obična browser osvježa dovoljna.
 4. **Alat se pojavljuje u katalogu, provjeri SVAKU formu koju ima:**
    - Widget → katalog (+ dole desno → Alati) → "Widgeti" prikaz → kartica alata, preview BEZ "Alat je javio grešku".
    - Aplikacija → "Aplikacije" prikaz → klik otvara u sopstvenom tabu bez greške.
    - Testiraj widget na BAR DVIJE različite veličine sekcije (npr. `s` i `l` preset) — fiksni `px` koji je "izgledao dobro" na jednoj veličini je čest propust (vidi Korak 2).
-   - Bez browser alata dostupnog: `curl -s http://localhost:8100/index.html | grep 'apps/<id>/app.js'` (minimalna provjera, ne dokazuje da forma stvarno radi).
+   - Bez browser alata dostupnog: `curl -s http://localhost:<port>/index.html | grep 'apps/<id>/app.js'` (minimalna provjera, ne dokazuje da forma stvarno radi).
 
 ## Šta NE raditi
 

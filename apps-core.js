@@ -233,10 +233,20 @@
   // Render sa zaštitom: greška unutar alata postane poruka u NJEGOVOM
   // elementu, ne pad cijelog dashboarda. Vraća cleanup funkciju alata
   // (ako je alat vrati) da je host pozove pri uklanjanju elementa.
+  // Poruka greške u elementu alata - tekst uvijek preko textContent
+  // (1.7.1: appId iz rasporeda/dashboard-state.json je ranije išao sirov
+  // u innerHTML, pa je pokvaren ili podmetnut fajl stanja mogao izvršiti
+  // skriptu pri učitavanju).
+  function renderError(el, title, text) {
+    el.innerHTML = '<div class="app-render-error"><strong></strong><span></span></div>';
+    el.querySelector('strong').textContent = title;
+    el.querySelector('span').textContent = text;
+  }
+
   function renderInto(appId, mode, el, opts) {
     var app = registry.get(appId);
     if (!app) {
-      el.innerHTML = '<div class="app-render-error"><strong>Alat nije dostupan</strong><span>„' + appId + '" nije instaliran u ovom dashboardu.</span></div>';
+      renderError(el, 'Alat nije dostupan', '„' + appId + '" nije instaliran u ovom dashboardu.');
       return null;
     }
     var renderFn = mode === 'app' ? app.app : app.widget;
@@ -245,7 +255,7 @@
       // se desi kroz UI (panel/folderi filtriraju po formi), ali stariji
       // layout zapis može referencirati formu koju nova verzija alata
       // više nema.
-      el.innerHTML = '<div class="app-render-error"><strong>Forma nije dostupna</strong><span>„' + (app.name || appId) + '" nema ' + (mode === 'app' ? 'punu aplikaciju' : 'widget formu') + ' u ovoj verziji.</span></div>';
+      renderError(el, 'Forma nije dostupna', '„' + (app.name || appId) + '" nema ' + (mode === 'app' ? 'punu aplikaciju' : 'widget formu') + ' u ovoj verziji.');
       return null;
     }
     try {
@@ -254,7 +264,7 @@
       return typeof cleanup === 'function' ? cleanup : null;
     } catch (err) {
       console.warn('[aizdravo:apps] Alat "' + appId + '" je javio grešku pri renderu (' + mode + '):', err);
-      el.innerHTML = '<div class="app-render-error"><strong>Alat je javio grešku</strong><span>„' + (app.name || appId) + '" se nije uspješno prikazao. Ostatak dashboarda radi normalno.</span></div>';
+      renderError(el, 'Alat je javio grešku', '„' + (app.name || appId) + '" se nije uspješno prikazao. Ostatak dashboarda radi normalno.');
       return null;
     }
   }

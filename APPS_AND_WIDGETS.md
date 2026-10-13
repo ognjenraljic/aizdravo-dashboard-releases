@@ -136,7 +136,7 @@ Widget sekcija čiji alat više nije prisutan (obrisana script linija) prikazuje
 
 ## Uklanjanje alata
 
-1. **Katalog (dugme "Alati" dole desno) → hover na alat → × → potvrdi** — TRAJNO briše `apps/<app-id>/` folder sa diska, uklanja script liniju iz `index.html`, i odjavljuje alat iz živog registra istog trena (bez reloada). Nije reverzibilno kroz UI — jedini povratak je ponovna instalacija (isti alat opet u `apps/`).
+1. **Katalog (dugme "Alati" dole desno) → hover na alat → × → potvrdi** — premješta `apps/<app-id>/` folder u `_apps_archive/` (ne briše ga sa diska), uklanja script liniju iz `index.html`, i odjavljuje alat iz živog registra istog trena (bez reloada). Kroz UI se ne vraća — jedini povratak je ponovna instalacija (isti alat opet u `apps/`).
 2. **Fizičko uklanjanje** — isti efekat ručno: obriši `apps/<app-id>/` folder i njegovu script liniju iz `index.html`.
 
 Widget instance ostavljene na boardu poslije brisanja prikazuju "Alat nije dostupan" (vidi gore) dok se alat eventualno ne instalira ponovo.
