@@ -757,8 +757,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def handle_katalog_get(self):
         """AI Zdravo katalog (v1.7.0) - samo čita .katalog/katalog.json koji
-        AI asistent napuni preko MCP-a (skill `katalog`). Dashboard sam ne
-        priča sa platformom."""
+        AI asistent napuni preko MCP-a (skill `katalog`), a dok ga nema
+        ugrađenu bazu poznatih alata (v1.7.4, tools/katalog_baza.json).
+        Dashboard sam ne priča sa platformom."""
         if not (BASE_DIR / 'tools' / 'katalog.py').is_file():
             # Update sa 1.6.x radi STARI dashboard_updater.py, koji ne zna
             # za nove fajlove; drugi prolaz (već novom skriptom) ih donese.
@@ -777,6 +778,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             'ok': True,
             'exists': True,
             'synced_at': data.get('synced_at'),
+            'source': data.get('source'),
             'tools': data.get('tools', []),
             'locked': [
                 {k: r.get(k) for k in ('resource_id', 'title', 'page_url', 'published_at')}

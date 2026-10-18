@@ -58,6 +58,8 @@ class KatalogTest(unittest.TestCase):
 
         def fake_download(url, dest):
             katalog.check_download_url(url)
+            if url not in self.local:
+                raise katalog.KatalogError('preuzimanje nije uspjelo (test)')
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(self.local[url], dest)
             self.downloads.append(url)
@@ -65,9 +67,13 @@ class KatalogTest(unittest.TestCase):
 
         self.downloads = []
         katalog.download_zip = fake_download
+        # Testovi ne vide pravu ugrađenu bazu; test baze je pravi svoju.
+        self._orig_baza = katalog.BAZA_PATH
+        katalog.BAZA_PATH = self.tmp / 'baza.json'
 
     def tearDown(self):
         katalog.download_zip = self._orig_download
+        katalog.BAZA_PATH = self._orig_baza
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def resource(self, rid, zip_path, name=None, marked=True, subtype='alati'):
@@ -82,20 +88,73 @@ class KatalogTest(unittest.TestCase):
             'metadata': {'subtype': subtype, 'download': {'url': url}},
         }
 
-    def test_bez_oznake_se_ipak_pregleda(self):
-        # Od v1.7.3: alat bez oznake u opisu ulazi u katalog (odlučuje zip),
-        # izvještaj samo javi da mu fali oznaka.
+    def test_bez_oznake_se_ne_skida(self):
         alat = make_zip(self.src / 'a.zip', {'qr/app.js': app_js('qr')})
         summary = katalog.sync([self.resource('a', alat, marked=False)], self.base)
-        self.assertEqual(summary['alat_bez_oznake'], ['a'])
-        self.assertEqual([t['id'] for t in katalog.load_katalog(self.base)['tools']], ['qr'])
-
-    def test_samo_oznaceni_ne_skida_neoznacene(self):
-        alat = make_zip(self.src / 'a.zip', {'qr/app.js': app_js('qr')})
-        summary = katalog.sync([self.resource('a', alat, marked=False)], self.base, check_unmarked=False)
         self.assertEqual(self.downloads, [])
         self.assertEqual(summary['bez_oznake'], ['a'])
         self.assertEqual(katalog.load_katalog(self.base)['tools'], [])
+        # --provjeri-sve ga ipak nađe i prijavi da mu fali oznaka
+        summary = katalog.sync([self.resource('a', alat, marked=False)], self.base, check_unmarked=True)
+        self.assertEqual(summary['alat_bez_oznake'], ['a'])
+        self.assertEqual([t['id'] for t in katalog.load_katalog(self.base)['tools']], ['qr'])
+
+    def baza_sa_alatom(self, rid, zip_path, app_id):
+        """Baza kao što je pravi release: pregled zipa jednom, pa zapis."""
+        url = HOST + rid + '.zip'
+        self.local[url] = zip_path
+        tools = katalog.inspect_zip(zip_path)
+        katalog.BAZA_PATH.write_text(json.dumps({'version': 1, 'built_at': '2026-10-18T00:00:00+00:00', 'resources': [{
+            'resource_id': 'resource:' + rid, 'title': rid, 'page_url': 'https://www.aizdravo.com/ai-sistem/alati/' + rid,
+            'subtype': 'plugins', 'published_at': '2026-08-01T10:00:00Z', 'download_url': url,
+            'sha256': katalog.sha256_file(zip_path), 'tools': tools}]}), encoding='utf-8')
+        return url
+
+    def test_baza_se_vidi_odmah_i_instalira(self):
+        alat = make_zip(self.src / 'b.zip', {'ikone/app.js': app_js('ikone')})
+        self.baza_sa_alatom('b', alat, 'ikone')
+        data = katalog.load_katalog(self.base)
+        self.assertEqual(data['source'], 'baza')
+        self.assertEqual([t['id'] for t in data['tools']], ['ikone'])
+        self.assertEqual(self.downloads, [])  # prikaz bez preuzimanja
+        katalog.install('resource:b', 'ikone', self.base)
+        self.assertTrue((self.base / 'apps' / 'ikone' / 'app.js').exists())
+        self.assertEqual(len(self.downloads), 1)  # zip tek pri instalaciji
+
+    def test_baza_bez_oznake_ne_skida_a_nov_oznacen_skida(self):
+        alat = make_zip(self.src / 'b.zip', {'ikone/app.js': app_js('ikone')})
+        self.baza_sa_alatom('b', alat, 'ikone')
+        nov = make_zip(self.src / 'n.zip', {'novi/app.js': app_js('novi')})
+        cand_b = self.resource('b', alat, marked=False)
+        summary = katalog.sync([cand_b, self.resource('n', nov)], self.base)
+        self.assertEqual(self.downloads, [HOST + 'n.zip'])
+        self.assertEqual(summary['alat_bez_oznake'], [])
+        self.assertEqual(sorted(t['id'] for t in katalog.load_katalog(self.base)['tools']), ['ikone', 'novi'])
+        # Alat iz baze ostaje i kad ga AI sljedeći put ne preda.
+        katalog.sync([self.resource('n', nov)], self.base)
+        self.assertEqual(sorted(t['id'] for t in katalog.load_katalog(self.base)['tools']), ['ikone', 'novi'])
+
+    def test_baza_alat_sa_novim_zipom_se_pregleda(self):
+        stari = make_zip(self.src / 'b.zip', {'ikone/app.js': app_js('ikone', '1.0.0')})
+        self.baza_sa_alatom('b', stari, 'ikone')
+        novi = make_zip(self.src / 'b2.zip', {'ikone/app.js': app_js('ikone', '2.0.0')})
+        katalog.sync([self.resource('b', novi, name='b2', marked=False)], self.base)
+        self.assertEqual(self.downloads, [HOST + 'b2.zip'])
+        self.assertEqual([t['version'] for t in katalog.load_katalog(self.base)['tools']], ['2.0.0'])
+
+    def test_baza_alat_ostaje_kad_novi_zip_ne_stigne(self):
+        stari = make_zip(self.src / 'b.zip', {'ikone/app.js': app_js('ikone', '1.0.0')})
+        self.baza_sa_alatom('b', stari, 'ikone')
+        cand = self.resource('b', stari, name='b2', marked=False)
+        del self.local[HOST + 'b2.zip']  # novi link, preuzimanje pukne
+        summary = katalog.sync([cand], self.base)
+        self.assertEqual(len(summary['greske']), 1)
+        self.assertEqual([t['version'] for t in katalog.load_katalog(self.base)['tools']], ['1.0.0'])
+
+    def test_neispravna_baza_se_ignorise(self):
+        katalog.BAZA_PATH.write_text('{"resources": [{"resource_id": "resource:x", "download_url": "https://evil.example/x.zip",'
+                                     ' "sha256": "' + '0' * 64 + '", "tools": [{"id": "x"}]}]}', encoding='utf-8')
+        self.assertIsNone(katalog.load_katalog(self.base))
 
     def test_neoznacen_skill_se_ne_skida(self):
         skill = make_zip(self.src / 's.zip', {'moj-skill/SKILL.md': '# skill'})

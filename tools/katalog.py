@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AI Zdravo katalog alata (v1.7.0, 13.10.2026; v1.7.3 pregleda sve resurse).
+"""AI Zdravo katalog alata (v1.7.0, 13.10.2026; v1.7.4 ugrađena baza).
 
 Spaja AI Zdravo platformu (aizdravo.com, AI Sistem resursi) sa ovim
 dashboardom: katalog alata koji se mogu instalirati jednim klikom iz
@@ -10,13 +10,17 @@ Podjela posla:
   platforme i preda ih ovoj skripti (skill `.claude/skills/katalog/`).
   Dashboard sam ne priča sa MCP-om - MCP prijava (OAuth) je vezana za AI
   klijenta, ne za lokalni server.
-- `sync` pregleda zip SVAKOG resursa (od v1.7.3), sa oznakom
-  "Kompatibilno sa: AI Zdravo Dashboard" u opisu ili bez nje, i samo
-  nove/promijenjene (keš po download linku). Odluka je po SADRŽAJU zipa:
-  u katalog ide samo folder sa app.js koji poziva registerApp() (odatle i
-  id, verzija, forma). Neoznačeni skillovi, promptovi i workflow-i se ne
-  skidaju. Oznaka ostaje samo kao provjera: označen resurs čiji zip nije
-  alat = greška u izvještaju. `--samo-oznaceni` = staro ponašanje.
+- Ugrađena baza (tools/katalog_baza.json, v1.7.4): alati sa platforme čiji
+  je zip već provjeren (SHA-256). Katalog ih prikazuje odmah, i prije prvog
+  osvježavanja preko AI-a; zip se skida tek pri instalaciji.
+- `sync` skida i pregleda samo NOVE resurse koji u opisu imaju red
+  "Kompatibilno sa: AI Zdravo Dashboard" (MARKER_RE), i poznate alate iz
+  baze kad dobiju novi zip (novi link = nova verzija). Keš je po download
+  linku, pa se ništa ne skida dvaput.
+- Zip se uvijek provjeri: u katalog ide samo folder sa app.js koji poziva
+  registerApp() (odatle i id, verzija, forma). Označen resurs čiji zip
+  nije alat = greška u izvještaju, ne ulazi u katalog.
+  `--provjeri-sve` pregleda i neoznačene alate i pluginove.
 - `install` (poziva ga server.py) raspakuje alat iz provjerenog zipa
   (SHA-256 iz sync-a) u apps/<id>/. Postojeća verzija ide u
   _apps_archive/, nikad se ne briše.
@@ -57,15 +61,15 @@ MAX_ENTRIES = 10000
 MAX_FILE_BYTES = 50 * 1024 * 1024  # isto kao APP_INSTALL_MAX_FILE_BYTES u server.py
 DOWNLOAD_TIMEOUT = 60
 
-# Oznaka u opisu resursa na platformi: alat za dashboard u opisu ima red
-# "Kompatibilno sa: AI Zdravo Dashboard". Od v1.7.3 (18.10.2026) nije
-# uslov za preuzimanje (mnogi objavljeni alati je nemaju), nego provjera:
-# odlučuje sadržaj zipa.
+# Oznaka u opisu resursa na platformi (autorova odluka 13.10.2026): nov
+# alat za dashboard u opisu ima red "Kompatibilno sa: AI Zdravo Dashboard".
+# Samo takvi novi resursi se skidaju; alati objavljeni prije oznake su u
+# ugrađenoj bazi (BAZA_PATH). Zip se i dalje provjerava.
 MARKER_RE = re.compile(r'kompatibilno\s+sa\s*:?\s*ai\s+zdravo\s+dashboard', re.I)
 MARKER_TEXT = 'Kompatibilno sa: AI Zdravo Dashboard'
 
 # Neoznačeni resursi ovih vrsta nikad nisu alati za dashboard, pa se njihov
-# zip ni ne skida.
+# zip ne skida ni uz --provjeri-sve.
 NON_TOOL_SUBTYPES = {'skill', 'prompt', 'workflow'}
 
 APP_ID_RE = re.compile(r'^[a-z0-9]+(-[a-z0-9]+)*$')
@@ -93,10 +97,47 @@ def cache_dir(base_dir=BASE_DIR):
     return katalog_dir(base_dir) / 'cache'
 
 
+# Ugrađena baza poznatih alata (ide uz dashboard, osvježava se updateom).
+BAZA_PATH = Path(__file__).resolve().with_name('katalog_baza.json')
+
+
+def load_baza():
+    """{resource_id: zapis} iz ugrađene baze. Zapis bez ispravnog id-a,
+    linka sa AI Zdravo skladišta, SHA-256 ili alata se preskače."""
+    try:
+        data = json.loads(BAZA_PATH.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return {}, None
+    if not isinstance(data, dict):
+        return {}, None
+    out = {}
+    for r in data.get('resources', []):
+        if not isinstance(r, dict) or not RESOURCE_ID_RE.match(str(r.get('resource_id', ''))):
+            continue
+        try:
+            check_download_url(r.get('download_url'))
+        except KatalogError:
+            continue
+        tools = [t for t in r.get('tools') or [] if isinstance(t, dict) and APP_ID_RE.match(str(t.get('id', '')))]
+        if not tools or not re.fullmatch(r'[0-9a-f]{64}', str(r.get('sha256', ''))):
+            continue
+        rec = dict(r)
+        rec.update({'status': 'dashboard', 'tools': tools, 'baza': True})
+        out[rec['resource_id']] = rec
+    return out, data.get('built_at')
+
+
 def load_katalog(base_dir=BASE_DIR):
+    """Katalog iz .katalog/katalog.json; dok ga AI još nije osvježio,
+    ugrađena baza (source 'baza'), da se poznati alati vide odmah."""
     path = katalog_path(base_dir)
     if not path.exists():
-        return None
+        baza, built_at = load_baza()
+        if not baza:
+            return None
+        resources = sorted(baza.values(), key=lambda r: r.get('published_at', ''), reverse=True)
+        return {'version': 1, 'source': 'baza', 'synced_at': built_at,
+                'resources': resources, 'tools': build_tools(resources)}
     try:
         data = json.loads(path.read_text(encoding='utf-8'))
     except (OSError, ValueError):
@@ -379,16 +420,22 @@ def build_tools(resources):
     return sorted(best.values(), key=lambda t: t['published_at'], reverse=True)
 
 
-def sync(candidates, base_dir=BASE_DIR, full=False, check_unmarked=True, log=print):
-    """check_unmarked=True (podrazumijevano) pregleda i zipove resursa BEZ
-    oznake u opisu; False = skidaju se samo označeni."""
+def sync(candidates, base_dir=BASE_DIR, full=False, check_unmarked=False, log=print):
+    """Skida samo nove označene resurse i poznate alate (baza) sa novim
+    zipom. check_unmarked=True pregleda i neoznačene alate i pluginove."""
     base_dir = Path(base_dir)
+    baza, _ = load_baza()
     old = load_katalog(base_dir) or {}
     old_by_id = {r['resource_id']: r for r in old.get('resources', []) if isinstance(r, dict) and 'resource_id' in r}
     cdir = cache_dir(base_dir)
     cdir.mkdir(parents=True, exist_ok=True)
 
     result = dict(old_by_id) if not full else {}
+    if not full:
+        # Poznati alati ostaju u katalogu i kad ih AI ovaj put nije predao.
+        for rid, rec in baza.items():
+            if result.get(rid, {}).get('status') != 'dashboard':
+                result[rid] = dict(rec)
     summary = {'novo': [], 'promijenjeno': [], 'nije_dashboard': 0, 'zakljucano': 0,
                'bez_oznake': [], 'alat_bez_oznake': [], 'greske': []}
     seen = set()
@@ -413,9 +460,18 @@ def sync(candidates, base_dir=BASE_DIR, full=False, check_unmarked=True, log=pri
             result[rid] = record
             continue
 
-        if not cand['marked'] and (not check_unmarked or cand['subtype'].lower() in NON_TOOL_SUBTYPES):
-            # Bez oznake (a samo označeni traženi, ili skill/prompt/workflow):
-            # ne skida se ništa.
+        known = baza.get(rid)
+        if known and known['download_url'] == cand['download_url']:
+            # Poznat alat, isti zip: podaci iz baze, bez preuzimanja.
+            record.update({k: known[k] for k in ('status', 'tools', 'sha256')})
+            record['baza'] = True
+            result[rid] = record
+            continue
+        prev_tool = bool(prev and prev.get('status') == 'dashboard'
+                         and prev.get('download_url') == cand['download_url'])
+        if (not cand['marked'] and not known and not prev_tool
+                and (not check_unmarked or cand['subtype'].lower() in NON_TOOL_SUBTYPES)):
+            # Nov resurs bez oznake: ne skida se ništa.
             record.update({'status': 'bez-oznake', 'tools': []})
             summary['bez_oznake'].append(cand['title'])
             result[rid] = record
@@ -441,7 +497,7 @@ def sync(candidates, base_dir=BASE_DIR, full=False, check_unmarked=True, log=pri
                 summary['greske'].append(f"{cand['title']}: {record['error']}")
             elif record.get('status') == 'nije-dashboard':
                 summary['nije_dashboard'] += 1
-            elif not cand['marked']:
+            elif not cand['marked'] and not known:
                 summary['alat_bez_oznake'].append(cand['title'])
             result[rid] = record
             continue
@@ -453,8 +509,13 @@ def sync(candidates, base_dir=BASE_DIR, full=False, check_unmarked=True, log=pri
             tools = inspect_zip(zip_path)
         except KatalogError as exc:
             zip_path.unlink(missing_ok=True)
-            record.update({'status': 'greska', 'error': str(exc), 'tools': []})
             summary['greske'].append(f"{cand['title']}: {exc}")
+            # Nova verzija poznatog alata nije stigla: ostaje stara, provjerena.
+            fallback = known or (prev if prev and prev.get('status') == 'dashboard' else None)
+            if fallback:
+                result[rid] = dict(fallback)
+                continue
+            record.update({'status': 'greska', 'error': str(exc), 'tools': []})
             result[rid] = record
             continue
 
@@ -464,11 +525,11 @@ def sync(candidates, base_dir=BASE_DIR, full=False, check_unmarked=True, log=pri
             record['status'] = 'dashboard'
             (summary['promijenjeno'] if prev else summary['novo']).append(
                 ', '.join(f"{t['name']} v{t['version']}" for t in tools))
-            if not cand['marked']:
+            if not cand['marked'] and not known:
                 summary['alat_bez_oznake'].append(cand['title'])
         else:
             zip_path.unlink(missing_ok=True)  # čuvamo samo zipove alata
-            if cand['marked']:
+            if cand['marked'] or known:
                 record.update({'status': 'greska', 'error': 'označen kao alat za dashboard, a zip nema app.js sa registerApp()'})
                 summary['greske'].append(f"{cand['title']}: {record['error']}")
             else:
@@ -609,10 +670,10 @@ def _cli():
     p_sync = sub.add_parser('sync', help='osvježi katalog iz kandidata koje je AI asistent dobio preko MCP-a')
     p_sync.add_argument('--input', required=True, help='JSON lista resursa (MCP fetch rezultati); "-" = standardni ulaz')
     p_sync.add_argument('--full', action='store_true', help='pun prolaz: resursi kojih nema u ulazu se brišu iz kataloga')
-    p_sync.add_argument('--samo-oznaceni', action='store_true',
-                        help=f'skini samo resurse sa oznakom "{MARKER_TEXT}" u opisu')
-    # Do v1.7.2 je pregled neoznačenih bio opcija; sada je podrazumijevan.
-    p_sync.add_argument('--provjeri-sve', action='store_true', help=argparse.SUPPRESS)
+    p_sync.add_argument('--provjeri-sve', action='store_true',
+                        help=f'pregledaj i zipove alata i pluginova bez oznake "{MARKER_TEXT}" u opisu')
+    # v1.7.3 je imao ovu opciju; sada je to podrazumijevano ponašanje.
+    p_sync.add_argument('--samo-oznaceni', action='store_true', help=argparse.SUPPRESS)
     sub.add_parser('list', help='ispiši alate u katalogu')
     args = parser.parse_args()
 
@@ -621,14 +682,17 @@ def _cli():
         raw = json.loads(text)
         if isinstance(raw, dict):
             raw = raw.get('resources') or raw.get('results') or []
-        summary = sync(raw, full=args.full, check_unmarked=not args.samo_oznaceni)
+        summary = sync(raw, full=args.full, check_unmarked=args.provjeri_sve)
         print(json.dumps(summary, ensure_ascii=False, indent=2))
         return 0
     data = load_katalog()
     if not data:
         print('Katalog još nije osvježen.')
         return 0
-    print(f"Osvježen: {data.get('synced_at')}")
+    if data.get('source') == 'baza':
+        print(f"Ugrađena baza ({data.get('synced_at')}), još nije osvježeno preko AI-a.")
+    else:
+        print(f"Osvježen: {data.get('synced_at')}")
     for t in data.get('tools', []):
         forms = '+'.join(f for f in ('widget', 'app') if t.get(f)) or '?'
         print(f"- {t['name']} v{t['version']} ({forms}{', server' if t.get('server') else ''}) [{t['resource_id']}]")

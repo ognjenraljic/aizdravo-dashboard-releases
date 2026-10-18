@@ -1,0 +1,254 @@
+{
+  "version": 1,
+  "built_at": "2026-10-18T00:00:00+00:00",
+  "note": "Alati za dashboard sa aizdravo.com čiji je zip već provjeren (app.js sa registerApp, SHA-256). Prikazuju se odmah, bez preuzimanja; zip se skida tek pri instalaciji i mora imati isti SHA-256.",
+  "resources": [
+    {
+      "resource_id": "resource:cmv4a49p00003l3067yao422b",
+      "title": "Carousel Builder",
+      "page_url": "https://www.aizdravo.com/ai-sistem/alati/carousel-builder",
+      "subtype": "alati",
+      "access_level": "FREE",
+      "published_at": "2026-10-11T20:32:02.578Z",
+      "download_url": "https://ujtzjpgmjauwmlmcqikk.supabase.co/storage/v1/object/public/ai-sistem-files/resources/1791964619900-exdoce.zip",
+      "size": 0,
+      "sha256": "347ec816b935d4fa07ed69f672df90ed407305c5feac9316291a5288e806a533",
+      "tools": [
+        {
+          "id": "carousel-builder",
+          "name": "Carousel Builder",
+          "version": "1.9.0",
+          "description": "Biblioteka HTML carousela po projektima sa brand kitom i vizuelni editor: tekst, boje, fontovi, raspored, verzije, izvoz PNG/PDF.",
+          "icon": "carousel-builder",
+          "widget": true,
+          "app": true,
+          "folder": "carousel-builder/",
+          "files": 231,
+          "bytes": 31166719,
+          "server": true
+        }
+      ]
+    },
+    {
+      "resource_id": "resource:cmtx4r7g10001ib04j089acmx",
+      "title": "Text-to-Speech generator (ElevenLabs, Chirp3 HD)",
+      "page_url": "https://www.aizdravo.com/ai-sistem/alati/text-to-speech-generator-elevenlabs-chirp3-hd",
+      "subtype": "alati",
+      "access_level": "FREE",
+      "published_at": "2026-09-11T15:47:49.488Z",
+      "download_url": "https://ujtzjpgmjauwmlmcqikk.supabase.co/storage/v1/object/public/ai-sistem-files/resources/1789141655678-b8jb68.zip",
+      "size": 0,
+      "sha256": "2d6602c48539e2cae1f26979ca86b307ec15e0c11fc534c9a205099c0425a641",
+      "tools": [
+        {
+          "id": "chirp3-generator",
+          "name": "Chirp 3 Generator",
+          "version": "1.1.1",
+          "description": "Brzo generiši Google Chirp 3 HD glas (srpski/engleski) iz teksta, preslušaj i preuzmi.",
+          "icon": "microphone",
+          "widget": true,
+          "app": false,
+          "folder": "chirp3-generator/",
+          "files": 4,
+          "bytes": 42024,
+          "server": true
+        },
+        {
+          "id": "elevenlabs-generator",
+          "name": "ElevenLabs Generator",
+          "version": "2.0.0",
+          "description": "Brzo generiši domaći (sr/hr/bs) ElevenLabs glas iz teksta, preslušaj i preuzmi.",
+          "icon": "microphone",
+          "widget": true,
+          "app": false,
+          "folder": "elevenlabs-generator/",
+          "files": 4,
+          "bytes": 51633,
+          "server": true
+        }
+      ]
+    },
+    {
+      "resource_id": "resource:cmthbddb00001l204w0iliy21",
+      "title": "Personalizovan widget: Vremenska prognoza",
+      "page_url": "https://www.aizdravo.com/ai-sistem/plugins/personalizovan-widget-vremenska-prognoza",
+      "subtype": "plugins",
+      "access_level": "FREE",
+      "published_at": "2026-08-31T14:08:42.394Z",
+      "download_url": "https://ujtzjpgmjauwmlmcqikk.supabase.co/storage/v1/object/public/ai-sistem-files/resources/1788185309470-qtd23.zip",
+      "size": 0,
+      "sha256": "a34f33d8add383b9a5c549318e8f38caee62dd0be24fea45281e7491f40fd627",
+      "tools": [
+        {
+          "id": "vremenska-prognoza",
+          "name": "Vremenska Prognoza",
+          "version": "1.0.5",
+          "description": "Prognoza za tvoj grad, s ilustracijama za svako doba dana - sad, po satu i 7 dana unaprijed.",
+          "icon": "cloud",
+          "widget": true,
+          "app": false,
+          "folder": "vremenska-prognoza/",
+          "files": 72,
+          "bytes": 2112276,
+          "server": true
+        }
+      ]
+    },
+    {
+      "resource_id": "resource:cmtcpkqaf0005jq04cjs4ggs4",
+      "title": "Thumbnail generator",
+      "page_url": "https://www.aizdravo.com/ai-sistem/plugins/thumbnail-generator",
+      "subtype": "plugins",
+      "access_level": "FREE",
+      "published_at": "2026-08-28T08:47:29.557Z",
+      "download_url": "https://ujtzjpgmjauwmlmcqikk.supabase.co/storage/v1/object/public/ai-sistem-files/resources/1787906833820-f3pm5l.zip",
+      "size": 0,
+      "sha256": "9850f4977666b713ca3036331712a576182b45b8be4b3a45dcbc14c954ba109a",
+      "tools": [
+        {
+          "id": "thumbnail-builder",
+          "name": "Thumbnail Builder",
+          "version": "1.5.0",
+          "description": "Slika lika + naslov -> gotov YouTube thumbnail, uživo pregled, automatski uklanja pozadinu.",
+          "icon": "thumbnail",
+          "widget": false,
+          "app": true,
+          "folder": "thumbnail-builder/",
+          "files": 7,
+          "bytes": 111173,
+          "server": true
+        }
+      ]
+    },
+    {
+      "resource_id": "resource:cmsx2qess0001js04fbghbjew",
+      "title": "IO Paint - Lični operativni sistem",
+      "page_url": "https://www.aizdravo.com/ai-sistem/plugins/io-paint-licni-operativni-sistem",
+      "subtype": "plugins",
+      "access_level": "FREE",
+      "published_at": "2026-08-17T10:11:30.794Z",
+      "download_url": "https://ujtzjpgmjauwmlmcqikk.supabase.co/storage/v1/object/public/ai-sistem-files/resources/1786961483288-63kyuf.zip",
+      "size": 0,
+      "sha256": "477408e731d0edae37e77b9904efd6c19093dc8aed8683eb06bcb328a93c1d94",
+      "tools": [
+        {
+          "id": "iopaint",
+          "name": "IOPaint",
+          "version": "1.1.1",
+          "description": "Ukloni objekte sa slika lokalnim AI modelom, direktno u dashboardu.",
+          "icon": "eraser",
+          "widget": false,
+          "app": true,
+          "folder": "iopaint/",
+          "files": 2,
+          "bytes": 14574,
+          "server": true
+        }
+      ]
+    },
+    {
+      "resource_id": "resource:cmsx2mnid0001jv04tblosddt",
+      "title": "Icon Library - AI operativni sistem",
+      "page_url": "https://www.aizdravo.com/ai-sistem/plugins/icon-library-ai-operativni-sistem",
+      "subtype": "plugins",
+      "access_level": "FREE",
+      "published_at": "2026-08-17T10:08:35.459Z",
+      "download_url": "https://ujtzjpgmjauwmlmcqikk.supabase.co/storage/v1/object/public/ai-sistem-files/resources/1786961305446-nvdkc.zip",
+      "size": 0,
+      "sha256": "45f26327d1ad2c4ed743f9e561c0568e91c68df065639ae0e40e54e4b98f0b01",
+      "tools": [
+        {
+          "id": "icon-library",
+          "name": "Icon Library",
+          "version": "1.4.0",
+          "description": "Pretraži i preuzmi SVG ikonice iz instaliranih paketa (lucide + tvoji dodati).",
+          "icon": "icons",
+          "widget": true,
+          "app": true,
+          "folder": "icon-library/",
+          "files": 2012,
+          "bytes": 1045903,
+          "server": true
+        }
+      ]
+    },
+    {
+      "resource_id": "resource:cmsdnkypj0005jt047q2c3lzy",
+      "title": "QR Kod aplikacija - AI Operativni Sistem",
+      "page_url": "https://www.aizdravo.com/ai-sistem/alati/qr-kod-aplikacija-ai-operativni-sistem",
+      "subtype": "alati",
+      "access_level": "FREE",
+      "published_at": "2026-08-03T19:59:45.078Z",
+      "download_url": "https://ujtzjpgmjauwmlmcqikk.supabase.co/storage/v1/object/public/ai-sistem-files/resources/1785787179136-hp3s4.zip",
+      "size": 0,
+      "sha256": "b8050ccb5e2e4bd0ffc1d41da2c49c930b07c889bd82cae93b41eafec1efd13a",
+      "tools": [
+        {
+          "id": "qr-generator",
+          "name": "QR Kod",
+          "version": "1.3.0",
+          "description": "Ukucaj tekst ili link - QR kod se generiše uživo, bez servera.",
+          "icon": "qrcode",
+          "widget": true,
+          "app": true,
+          "folder": "qr-generator/",
+          "files": 1,
+          "bytes": 69971,
+          "server": false
+        }
+      ]
+    },
+    {
+      "resource_id": "resource:cmsdniplk0003jt045f5i4b3r",
+      "title": "Video kompresor widget - AI Operativni Sistem",
+      "page_url": "https://www.aizdravo.com/ai-sistem/alati/video-kompresor-widget-ai-operativni-sistem-widget",
+      "subtype": "alati",
+      "access_level": "FREE",
+      "published_at": "2026-08-03T19:57:59.959Z",
+      "download_url": "https://ujtzjpgmjauwmlmcqikk.supabase.co/storage/v1/object/public/ai-sistem-files/resources/1785787073606-iyu6xv.zip",
+      "size": 0,
+      "sha256": "c92d86609e23cf599147a92d688491a67525903e576676f0a4ce09f1a1f834fc",
+      "tools": [
+        {
+          "id": "video-kompresor",
+          "name": "Video Kompresor",
+          "version": "1.0.0",
+          "description": "Prevuci video sa Desktopa - kompresovana kopija se odmah vraća na Desktop.",
+          "icon": "video",
+          "widget": true,
+          "app": false,
+          "folder": "video-kompresor-1.0.0/",
+          "files": 2,
+          "bytes": 31611,
+          "server": true
+        }
+      ]
+    },
+    {
+      "resource_id": "resource:cmsdnesqq0008k304km20lc5n",
+      "title": "AI Operativni Sistem - Video kompresor aplikacija",
+      "page_url": "https://www.aizdravo.com/ai-sistem/alati/ai-operativni-sistem-video-kompresor",
+      "subtype": "alati",
+      "access_level": "FREE",
+      "published_at": "2026-08-03T19:54:57.409Z",
+      "download_url": "https://ujtzjpgmjauwmlmcqikk.supabase.co/storage/v1/object/public/ai-sistem-files/resources/1785786887348-3xt7ia.zip",
+      "size": 0,
+      "sha256": "fcae857b2870145ec34c3e7d31ae09b1900bdc87e0248988fdbcc4f0123a1c2a",
+      "tools": [
+        {
+          "id": "video-kompresor",
+          "name": "Video Kompresor",
+          "version": "1.1.0",
+          "description": "Prevuci video - kompresovana kopija ide na Desktop. Aplikacija dodaje red više fajlova, presete, rezoluciju i format.",
+          "icon": "video",
+          "widget": true,
+          "app": true,
+          "folder": "video-kompresor-1.1.0/",
+          "files": 4,
+          "bytes": 448497,
+          "server": true
+        }
+      ]
+    }
+  ]
+}

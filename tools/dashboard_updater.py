@@ -43,6 +43,7 @@ CORE_FILES = [
     '.claude/skills/katalog/SKILL.md',
     '.agents/skills/katalog/SKILL.md',
     'tools/katalog.py',
+    'tools/katalog_baza.json',  # v1.7.4: ugrađena baza poznatih alata
     # Stvarna adresa ovog foldera za start skripte i AI (1.7.1).
     'tools/dashboard_url.py',
     'tools/dashboard_updater.py',

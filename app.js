@@ -4132,7 +4132,9 @@
 
       const tools = platformKatalog.tools || [];
       headText.textContent = tools.length + (tools.length === 1 ? ' alat' : ' alata') +
-        ' sa platforme · osvježeno ' + formatKatalogDate(platformKatalog.synced_at);
+        (platformKatalog.source === 'baza'
+          ? ' sa platforme · za najnovije osvježi preko AI-a'
+          : ' sa platforme · osvježeno ' + formatKatalogDate(platformKatalog.synced_at));
       const matches = tools.filter(tool => !query ||
         tool.name.toLocaleLowerCase('sr').includes(query) ||
         (tool.description || '').toLocaleLowerCase('sr').includes(query));
