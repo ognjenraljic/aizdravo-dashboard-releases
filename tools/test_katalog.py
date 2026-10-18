@@ -70,7 +70,7 @@ class KatalogTest(unittest.TestCase):
         katalog.download_zip = self._orig_download
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def resource(self, rid, zip_path, name=None, marked=True):
+    def resource(self, rid, zip_path, name=None, marked=True, subtype='alati'):
         url = HOST + (name or rid) + '.zip'
         self.local[url] = zip_path
         text = '# ' + rid + '\n\nOpis alata.\n'
@@ -79,19 +79,30 @@ class KatalogTest(unittest.TestCase):
         return {
             'id': 'resource:' + rid, 'title': rid, 'url': 'https://www.aizdravo.com/ai-sistem/alati/' + rid,
             'published_at': '2026-10-01T10:00:00Z', 'text': text,
-            'metadata': {'subtype': 'alati', 'download': {'url': url}},
+            'metadata': {'subtype': subtype, 'download': {'url': url}},
         }
 
-    def test_bez_oznake_se_ne_skida(self):
+    def test_bez_oznake_se_ipak_pregleda(self):
+        # Od v1.7.3: alat bez oznake u opisu ulazi u katalog (odlučuje zip),
+        # izvještaj samo javi da mu fali oznaka.
         alat = make_zip(self.src / 'a.zip', {'qr/app.js': app_js('qr')})
         summary = katalog.sync([self.resource('a', alat, marked=False)], self.base)
+        self.assertEqual(summary['alat_bez_oznake'], ['a'])
+        self.assertEqual([t['id'] for t in katalog.load_katalog(self.base)['tools']], ['qr'])
+
+    def test_samo_oznaceni_ne_skida_neoznacene(self):
+        alat = make_zip(self.src / 'a.zip', {'qr/app.js': app_js('qr')})
+        summary = katalog.sync([self.resource('a', alat, marked=False)], self.base, check_unmarked=False)
         self.assertEqual(self.downloads, [])
         self.assertEqual(summary['bez_oznake'], ['a'])
         self.assertEqual(katalog.load_katalog(self.base)['tools'], [])
-        # prelazni period: --provjeri-sve ga ipak nađe i prijavi da mu fali oznaka
-        summary = katalog.sync([self.resource('a', alat, marked=False)], self.base, check_unmarked=True)
-        self.assertEqual(summary['alat_bez_oznake'], ['a'])
-        self.assertEqual([t['id'] for t in katalog.load_katalog(self.base)['tools']], ['qr'])
+
+    def test_neoznacen_skill_se_ne_skida(self):
+        skill = make_zip(self.src / 's.zip', {'moj-skill/SKILL.md': '# skill'})
+        summary = katalog.sync([self.resource('s', skill, marked=False, subtype='skill')], self.base)
+        self.assertEqual(self.downloads, [])
+        self.assertEqual(summary['greske'], [])
+        self.assertEqual(katalog.load_katalog(self.base)['tools'], [])
 
     def test_oznacen_a_nije_alat_je_greska(self):
         skill = make_zip(self.src / 's.zip', {'moj-skill/SKILL.md': '# skill'})

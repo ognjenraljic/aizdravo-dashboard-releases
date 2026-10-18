@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AI Zdravo katalog alata (v1.7.0, 13.10.2026).
+"""AI Zdravo katalog alata (v1.7.0, 13.10.2026; v1.7.3 pregleda sve resurse).
 
 Spaja AI Zdravo platformu (aizdravo.com, AI Sistem resursi) sa ovim
 dashboardom: katalog alata koji se mogu instalirati jednim klikom iz
@@ -10,13 +10,13 @@ Podjela posla:
   platforme i preda ih ovoj skripti (skill `.claude/skills/katalog/`).
   Dashboard sam ne priča sa MCP-om - MCP prijava (OAuth) je vezana za AI
   klijenta, ne za lokalni server.
-- Alat za dashboard na platformi u opisu ima red
-  "Kompatibilno sa: AI Zdravo Dashboard" (MARKER_RE). `sync` skida SAMO
-  takve resurse, i samo nove/promijenjene (keš po download linku).
-- Zip se i dalje provjeri: u katalog ide samo folder sa app.js koji poziva
-  registerApp() (odatle i id, verzija, forma). Označen resurs čiji zip
-  nije alat = greška u izvještaju, ne ulazi u katalog.
-  `--provjeri-sve` pregleda i neoznačene (prelazni period).
+- `sync` pregleda zip SVAKOG resursa (od v1.7.3), sa oznakom
+  "Kompatibilno sa: AI Zdravo Dashboard" u opisu ili bez nje, i samo
+  nove/promijenjene (keš po download linku). Odluka je po SADRŽAJU zipa:
+  u katalog ide samo folder sa app.js koji poziva registerApp() (odatle i
+  id, verzija, forma). Neoznačeni skillovi, promptovi i workflow-i se ne
+  skidaju. Oznaka ostaje samo kao provjera: označen resurs čiji zip nije
+  alat = greška u izvještaju. `--samo-oznaceni` = staro ponašanje.
 - `install` (poziva ga server.py) raspakuje alat iz provjerenog zipa
   (SHA-256 iz sync-a) u apps/<id>/. Postojeća verzija ide u
   _apps_archive/, nikad se ne briše.
@@ -57,12 +57,16 @@ MAX_ENTRIES = 10000
 MAX_FILE_BYTES = 50 * 1024 * 1024  # isto kao APP_INSTALL_MAX_FILE_BYTES u server.py
 DOWNLOAD_TIMEOUT = 60
 
-# Oznaka u opisu resursa na platformi (autorova odluka 13.10.2026): alat
-# za dashboard u opisu ima red "Kompatibilno sa: AI Zdravo Dashboard".
-# Samo takvi resursi se skidaju; zip se i dalje provjerava (opis može biti
-# pogrešan, a id/verzija/forma se čitaju iz zipa).
+# Oznaka u opisu resursa na platformi: alat za dashboard u opisu ima red
+# "Kompatibilno sa: AI Zdravo Dashboard". Od v1.7.3 (18.10.2026) nije
+# uslov za preuzimanje (mnogi objavljeni alati je nemaju), nego provjera:
+# odlučuje sadržaj zipa.
 MARKER_RE = re.compile(r'kompatibilno\s+sa\s*:?\s*ai\s+zdravo\s+dashboard', re.I)
 MARKER_TEXT = 'Kompatibilno sa: AI Zdravo Dashboard'
+
+# Neoznačeni resursi ovih vrsta nikad nisu alati za dashboard, pa se njihov
+# zip ni ne skida.
+NON_TOOL_SUBTYPES = {'skill', 'prompt', 'workflow'}
 
 APP_ID_RE = re.compile(r'^[a-z0-9]+(-[a-z0-9]+)*$')
 RESOURCE_ID_RE = re.compile(r'^resource:[A-Za-z0-9_-]{1,80}$')
@@ -375,9 +379,9 @@ def build_tools(resources):
     return sorted(best.values(), key=lambda t: t['published_at'], reverse=True)
 
 
-def sync(candidates, base_dir=BASE_DIR, full=False, check_unmarked=False, log=print):
-    """check_unmarked=True pregleda i zipove resursa BEZ oznake u opisu
-    (prelazni period dok svi alati na platformi ne dobiju oznaku)."""
+def sync(candidates, base_dir=BASE_DIR, full=False, check_unmarked=True, log=print):
+    """check_unmarked=True (podrazumijevano) pregleda i zipove resursa BEZ
+    oznake u opisu; False = skidaju se samo označeni."""
     base_dir = Path(base_dir)
     old = load_katalog(base_dir) or {}
     old_by_id = {r['resource_id']: r for r in old.get('resources', []) if isinstance(r, dict) and 'resource_id' in r}
@@ -409,8 +413,9 @@ def sync(candidates, base_dir=BASE_DIR, full=False, check_unmarked=False, log=pr
             result[rid] = record
             continue
 
-        if not cand['marked'] and not check_unmarked:
-            # Bez oznake u opisu: ne skida se ništa.
+        if not cand['marked'] and (not check_unmarked or cand['subtype'].lower() in NON_TOOL_SUBTYPES):
+            # Bez oznake (a samo označeni traženi, ili skill/prompt/workflow):
+            # ne skida se ništa.
             record.update({'status': 'bez-oznake', 'tools': []})
             summary['bez_oznake'].append(cand['title'])
             result[rid] = record
@@ -604,8 +609,10 @@ def _cli():
     p_sync = sub.add_parser('sync', help='osvježi katalog iz kandidata koje je AI asistent dobio preko MCP-a')
     p_sync.add_argument('--input', required=True, help='JSON lista resursa (MCP fetch rezultati); "-" = standardni ulaz')
     p_sync.add_argument('--full', action='store_true', help='pun prolaz: resursi kojih nema u ulazu se brišu iz kataloga')
-    p_sync.add_argument('--provjeri-sve', action='store_true',
-                        help=f'pregledaj i zipove resursa bez oznake "{MARKER_TEXT}" u opisu')
+    p_sync.add_argument('--samo-oznaceni', action='store_true',
+                        help=f'skini samo resurse sa oznakom "{MARKER_TEXT}" u opisu')
+    # Do v1.7.2 je pregled neoznačenih bio opcija; sada je podrazumijevan.
+    p_sync.add_argument('--provjeri-sve', action='store_true', help=argparse.SUPPRESS)
     sub.add_parser('list', help='ispiši alate u katalogu')
     args = parser.parse_args()
 
@@ -614,7 +621,7 @@ def _cli():
         raw = json.loads(text)
         if isinstance(raw, dict):
             raw = raw.get('resources') or raw.get('results') or []
-        summary = sync(raw, full=args.full, check_unmarked=args.provjeri_sve)
+        summary = sync(raw, full=args.full, check_unmarked=not args.samo_oznaceni)
         print(json.dumps(summary, ensure_ascii=False, indent=2))
         return 0
     data = load_katalog()
