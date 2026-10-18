@@ -135,11 +135,36 @@ def sha256_file(path):
     return h.hexdigest()
 
 
+DOWNLOAD_ATTEMPTS = 3
+
+
 def download_zip(url, dest):
     """Skini u tmp pa atomski preimenuj - prekinut download nikad ne ostavi
-    pola zipa pod pravim imenom u kešu."""
+    pola zipa pod pravim imenom u kešu. Skraćen prenos (manje bajtova od
+    Content-Length ili neispravan zip) pokušava se ponovo, do DOWNLOAD_ATTEMPTS."""
     check_download_url(url)
     dest.parent.mkdir(parents=True, exist_ok=True)
+    last = None
+    for attempt in range(DOWNLOAD_ATTEMPTS):
+        try:
+            _download_once(url, dest)
+            return dest
+        except KatalogError as exc:
+            if not getattr(exc, 'retry', False):
+                raise
+            last = exc
+            if attempt + 1 < DOWNLOAD_ATTEMPTS:
+                time.sleep(0.5 * (attempt + 1))
+    raise KatalogError(f'preuzimanje nije uspjelo ni iz {DOWNLOAD_ATTEMPTS}. pokušaja: {last}')
+
+
+def _retryable(msg):
+    exc = KatalogError(msg)
+    exc.retry = True
+    return exc
+
+
+def _download_once(url, dest):
     req = urllib.request.Request(url, headers={'User-Agent': 'AIZdravoDashboard-Katalog/1'})
     tmp = dest.with_suffix('.part')
     total = 0
@@ -147,6 +172,7 @@ def download_zip(url, dest):
         with urllib.request.urlopen(req, timeout=DOWNLOAD_TIMEOUT) as resp:
             # Preusmjerenje van dozvoljenog hosta se ne prati tiho.
             check_download_url(resp.geturl())
+            expected = resp.headers.get('Content-Length')
             with open(tmp, 'wb') as out:
                 while True:
                     chunk = resp.read(1024 * 1024)
@@ -156,14 +182,17 @@ def download_zip(url, dest):
                     if total > MAX_ZIP_BYTES:
                         raise KatalogError('zip je veći od dozvoljenog')
                     out.write(chunk)
+        if expected and expected.isdigit() and total != int(expected):
+            raise _retryable(f'skraćen prenos ({total} od {expected} bajtova)')
+        if not zipfile.is_zipfile(tmp):
+            raise _retryable('preuzet fajl nije ispravan zip')
         tmp.replace(dest)
     except KatalogError:
         tmp.unlink(missing_ok=True)
         raise
     except Exception as exc:
         tmp.unlink(missing_ok=True)
-        raise KatalogError(f'preuzimanje nije uspjelo: {exc}') from exc
-    return dest
+        raise _retryable(f'preuzimanje nije uspjelo: {exc}') from exc
 
 
 # ---------------- Pregled zipa ----------------

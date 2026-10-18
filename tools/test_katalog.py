@@ -205,5 +205,62 @@ class KatalogTest(unittest.TestCase):
             katalog.install('resource:a', '../izlaz', self.base)
 
 
+class FakeResponse:
+    def __init__(self, url, body, length):
+        self.url, self.body, self.headers = url, body, {'Content-Length': str(length)}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def geturl(self):
+        return self.url
+
+    def read(self, n):
+        chunk, self.body = self.body[:n], self.body[n:]
+        return chunk
+
+
+class DownloadRetryTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.zip_bytes = make_zip(self.tmp / 'z.zip', {'qr/app.js': app_js('qr')}).read_bytes()
+        self._orig_urlopen = katalog.urllib.request.urlopen
+        self._orig_sleep = katalog.time.sleep
+        katalog.time.sleep = lambda s: None
+        self.calls = 0
+
+    def tearDown(self):
+        katalog.urllib.request.urlopen = self._orig_urlopen
+        katalog.time.sleep = self._orig_sleep
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def serve(self, bodies):
+        def fake(req, timeout=None):
+            body = bodies[min(self.calls, len(bodies) - 1)]
+            self.calls += 1
+            return FakeResponse(req.full_url, body, len(self.zip_bytes))
+        katalog.urllib.request.urlopen = fake
+
+    def test_skracen_prenos_pokusava_ponovo(self):
+        self.serve([self.zip_bytes[:200], self.zip_bytes])
+        dest = self.tmp / 'cache' / 'a.zip'
+        katalog.download_zip(HOST + 'a.zip', dest)
+        self.assertEqual(self.calls, 2)
+        self.assertEqual(dest.read_bytes(), self.zip_bytes)
+        self.assertFalse(dest.with_suffix('.part').exists())
+
+    def test_stalno_skracen_prenos_je_greska_bez_ostatka(self):
+        self.serve([self.zip_bytes[:200]])
+        dest = self.tmp / 'cache' / 'a.zip'
+        with self.assertRaises(katalog.KatalogError):
+            katalog.download_zip(HOST + 'a.zip', dest)
+        self.assertEqual(self.calls, katalog.DOWNLOAD_ATTEMPTS)
+        self.assertFalse(dest.exists())
+        self.assertFalse(dest.with_suffix('.part').exists())
+
+
 if __name__ == '__main__':
     unittest.main()
